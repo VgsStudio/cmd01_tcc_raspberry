@@ -17,7 +17,7 @@ LED_CHANNEL    = 0       # Mude para '1' para GPIOs 13, 19, 41, 45 ou 53.
 
 # --- Probability Configuration ---
 BLUE_PROBABILITY = 50    # Percentage chance for blue (1)
-RED_PROBABILITY = 50     # Percentage chance for red (0)
+RED_PROBABILITY = 100 - BLUE_PROBABILITY   # Percentage chance for red (0)
 
 # --- Global Variables ---
 alternating = True       # Controls the alternating pattern
@@ -98,7 +98,7 @@ def lottery_color():
     if random_num <= BLUE_PROBABILITY:
         return Color(0, 0, 255), 1  # Blue = 1
     else:
-        return Color(255, 0, 0), 0  # Red = 0
+        return Color(255, 0, 0), 0  # Red
 
 def check_for_input():
     """Checks for Enter key press in a non-blocking way."""
@@ -137,15 +137,8 @@ if __name__ == '__main__':
             # Start mixed alternating colors (each LED alternates individually)
             mixed_alternating_colors(strip)
             
-            # After alternating stops, enter lottery mode
+            # After alternating stops, enter lottery mode immediately
             print("\n=== Lottery Mode ===")
-            print("Press ENTER to draw a color...")
-            
-            input("Press ENTER to draw... ")
-            
-            # Clear the strip first
-            clear_strip(strip)
-            time.sleep(0.5)
             
             # Draw a color
             color, binary_value = lottery_color()
@@ -156,7 +149,8 @@ if __name__ == '__main__':
             # Wait 3 seconds to show the result
             time.sleep(3)
             
-            print("Restarting alternation...\n")
+            print("Press ENTER to restart alternation or Ctrl-C to exit.")
+            input("Press ENTER to restart alternation...")
 
     except KeyboardInterrupt:
         print("\nExiting...")
