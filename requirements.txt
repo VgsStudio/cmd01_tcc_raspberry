@@ -6,3 +6,10 @@ RPi.GPIO==0.7.1
 
 # Development Dependencies
 # Add other dependencies as needed for your project
+
+
+# Qiskit Requirements for Toffoli Gate Example
+qiskit==0.45.0
+qiskit-aer==0.13.0
+matplotlib==3.7.2
+numpy==1.24.3
