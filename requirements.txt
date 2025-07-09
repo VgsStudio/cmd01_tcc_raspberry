@@ -1,5 +1,8 @@
 # LED Control Dependencies
 rpi_ws281x==5.0.0
 
+# GPIO Control Dependencies
+RPi.GPIO==0.7.1
+
 # Development Dependencies
 # Add other dependencies as needed for your project

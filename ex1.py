@@ -4,6 +4,7 @@ import random
 import sys
 import select
 import threading
+import RPi.GPIO as GPIO
 from rpi_ws281x import *
 
 # --- Configurações da Fita de LED (ajuste conforme sua fita) ---
@@ -14,6 +15,9 @@ LED_DMA        = 10      # Canal DMA.
 LED_BRIGHTNESS = 200      # Brilho de 0 a 255. Cuidado com fontes fracas!
 LED_INVERT     = False   # Mude para True se o sinal precisar ser invertido.
 LED_CHANNEL    = 0       # Mude para '1' para GPIOs 13, 19, 41, 45 ou 53.
+
+# --- Button Configuration ---
+BUTTON_PIN     = 17      # GPIO 17 for button input
 
 # --- Probability Configuration ---
 BLUE_PROBABILITY = 50    # Percentage chance for blue (1)
@@ -53,7 +57,7 @@ def alternate_colors(strip):
     """Continuously alternates between red and blue."""
     global alternating, current_color
     
-    print("Starting color alternation... Press ENTER to stop and enter lottery mode.")
+    print("Starting color alternation... Press the button (GPIO 17) to stop and enter lottery mode.")
     
     while alternating:
         draw_color(strip, current_color)
@@ -64,7 +68,7 @@ def mixed_alternating_colors(strip):
     """Different LEDs alternate in different orders creating a mixed pattern."""
     global alternating
     
-    print("Starting mixed alternation... Press ENTER to stop and enter lottery mode.")
+    print("Starting mixed alternation... Press the button (GPIO 17) to stop and enter lottery mode.")
     
     # Create different starting colors for each LED
     led_colors = []
@@ -100,22 +104,32 @@ def lottery_color():
     else:
         return Color(255, 0, 0), 0  # Red
 
-def check_for_input():
-    """Checks for Enter key press in a non-blocking way."""
+def check_for_button():
+    """Checks for button press in a non-blocking way."""
     global alternating
     
     while alternating:
         try:
-            # Check if there's input available
-            if select.select([sys.stdin], [], [], 0.1)[0]:
-                input()  # Read the input
-                alternating = False
-                break
+            # Check if button is pressed (LOW when pressed with pull-up resistor)
+            if GPIO.input(BUTTON_PIN) == GPIO.LOW:
+                time.sleep(0.1)  # Debounce delay
+                # Check if button is still pressed after debounce
+                if GPIO.input(BUTTON_PIN) == GPIO.LOW:
+                    # Wait for button release to avoid multiple triggers
+                    while GPIO.input(BUTTON_PIN) == GPIO.LOW:
+                        time.sleep(0.01)
+                    alternating = False
+                    break
+            time.sleep(0.01)  # Small delay to prevent excessive CPU usage
         except:
             pass
 
 # --- Main Program ---
 if __name__ == '__main__':
+    # Initialize GPIO
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    
     strip = Adafruit_NeoPixel(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL)
     strip.begin()
 
@@ -123,16 +137,17 @@ if __name__ == '__main__':
     print(f'Blue Probability (1): {BLUE_PROBABILITY}%')
     print(f'Red Probability (0): {RED_PROBABILITY}%')
     print('Starting running alternation mode...')
+    print('Press the button (GPIO 17) to enter lottery mode...')
     
     try:
         while True:
             # Reset alternating state
             restart_alternation()
             
-            # Start input checking thread
-            input_thread = threading.Thread(target=check_for_input)
-            input_thread.daemon = True
-            input_thread.start()
+            # Start button checking thread
+            button_thread = threading.Thread(target=check_for_button)
+            button_thread.daemon = True
+            button_thread.start()
             
             # Start mixed alternating colors (each LED alternates individually)
             mixed_alternating_colors(strip)
@@ -149,8 +164,15 @@ if __name__ == '__main__':
             # Wait 3 seconds to show the result
             time.sleep(3)
             
-            print("Press ENTER to restart alternation or Ctrl-C to exit.")
-            input("Press ENTER to restart alternation...")
+            print("Press the button (GPIO 17) to restart alternation or Ctrl-C to exit.")
+            # Wait for button press to restart
+            while GPIO.input(BUTTON_PIN) == GPIO.HIGH:
+                time.sleep(0.01)
+            # Debounce
+            time.sleep(0.1)
+            # Wait for button release
+            while GPIO.input(BUTTON_PIN) == GPIO.LOW:
+                time.sleep(0.01)
 
     except KeyboardInterrupt:
         print("\nExiting...")
@@ -159,3 +181,5 @@ if __name__ == '__main__':
     finally:
         # Ensure LEDs are always turned off at the end
         clear_strip(strip)
+        # Clean up GPIO
+        GPIO.cleanup()
