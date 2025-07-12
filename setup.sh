@@ -65,18 +65,14 @@ main() {
         fi
     fi
     
-    # Activate virtual environment
-    print_status "🔌 Activating virtual environment..."
-    source venv/bin/activate
+    # Upgrade pip in virtual environment
+    print_status "⬆️  Upgrading pip in virtual environment..."
+    ./venv/bin/python -m pip install --upgrade pip
     
-    # Upgrade pip
-    print_status "⬆️  Upgrading pip..."
-    python -m pip install --upgrade pip
-    
-    # Install requirements
-    print_status "📦 Installing requirements..."
+    # Install requirements using virtual environment
+    print_status "📦 Installing requirements in virtual environment..."
     if [ -f "requirements.txt" ]; then
-        pip install -r requirements.txt
+        ./venv/bin/python -m pip install -r requirements.txt
         if [ $? -eq 0 ]; then
             print_success "Requirements installed successfully!"
         else
@@ -91,12 +87,12 @@ main() {
     # Show final status
     print_status "📊 Final Status:"
     echo "  • Virtual environment: $(pwd)/venv"
-    echo "  • Python version: $(python --version)"
-    echo "  • Pip version: $(pip --version)"
+    echo "  • Python version: $(./venv/bin/python --version)"
+    echo "  • Pip version: $(./venv/bin/python -m pip --version)"
     
     # Show installed packages
     print_status "📦 Installed packages:"
-    pip list --format=columns
+    ./venv/bin/python -m pip list --format=columns
     
     print_success "🎉 Setup completed successfully!"
     print_status "💡 To activate the virtual environment manually: source venv/bin/activate"

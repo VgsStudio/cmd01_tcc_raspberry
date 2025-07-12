@@ -4,6 +4,11 @@ rpi_ws281x==5.0.0
 # GPIO Control Dependencies
 RPi.GPIO==0.7.1
 
+# OLED Display Dependencies for exp2.py
+adafruit-circuitpython-ssd1306==2.12.21
+Pillow==10.0.0
+adafruit-blinka==8.22.2
+
 # Development Dependencies
 # Add other dependencies as needed for your project
 
