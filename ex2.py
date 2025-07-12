@@ -1,14 +1,13 @@
 import time
 import board
 import busio
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 import adafruit_ssd1306
 import RPi.GPIO as GPIO
-import threading
 
 # I2C pins for OLED
 # Based on valid I2C ports: ((1, 3, 2), (0, 1, 0))
-# Using first valid port: SCL=GPIO1, SDA=GPIO3
+# Using first valid port: SCL=def number_display():
 # Connect your OLED as follows:
 # OLED SCK pin → Raspberry Pi GPIO 1 (Physical pin 28)
 # OLED SDA pin → Raspberry Pi GPIO 3 (Physical pin 5)
@@ -17,11 +16,14 @@ import threading
 i2c = busio.I2C(scl=board.D3, sda=board.D2)
 
 # Button Configuration
-BUTTON_PIN = 17  # GPIO 17 for button input
+LEFT_BUTTON_PIN = 17   # GPIO 17 for left number
+RIGHT_BUTTON_PIN = 4   # GPIO 4 for right number
 
-# Counter variable
-counter = 0
-last_button_time = 0  # For debouncing
+# Counter variables
+left_counter = 0
+right_counter = 0
+last_left_button_time = 0   # For debouncing left button
+last_right_button_time = 0  # For debouncing right button
 
 # 128x64 OLED display
 WIDTH = 128
@@ -30,390 +32,247 @@ BORDER = 0
 
 display = adafruit_ssd1306.SSD1306_I2C(WIDTH, HEIGHT, i2c)
 
-# Arduino-style frame animation data
-# 30 frames of 64x64 heart beating animation (converted from Arduino bitmap)
-heart_frames = [
-    # Frame 0 - Starting position (smallest)
-    [
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x0F, 0xF0, 0x0F, 0xF0, 0x00, 0x00,
-        0x00, 0x00, 0x3F, 0xFC, 0x3F, 0xFC, 0x00, 0x00,
-        0x00, 0x00, 0x7F, 0xFE, 0x7F, 0xFE, 0x00, 0x00,
-        0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00,
-        0x00, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0x80, 0x00,
-        0x00, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0x80, 0x00,
-        0x00, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0x80, 0x00,
-        0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00,
-        0x00, 0x00, 0x7F, 0xFF, 0xFF, 0xFE, 0x00, 0x00,
-        0x00, 0x00, 0x3F, 0xFF, 0xFF, 0xFC, 0x00, 0x00,
-        0x00, 0x00, 0x1F, 0xFF, 0xFF, 0xF8, 0x00, 0x00,
-        0x00, 0x00, 0x0F, 0xFF, 0xFF, 0xF0, 0x00, 0x00,
-        0x00, 0x00, 0x07, 0xFF, 0xFF, 0xE0, 0x00, 0x00,
-        0x00, 0x00, 0x03, 0xFF, 0xFF, 0xC0, 0x00, 0x00,
-        0x00, 0x00, 0x01, 0xFF, 0xFF, 0x80, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x7F, 0xFE, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x3F, 0xFC, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x1F, 0xF8, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x0F, 0xF0, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x07, 0xE0, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x03, 0xC0, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x01, 0x80, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-    ],
-    # Frame 1-5 - First expansion (lub)
-    [
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x1F, 0xF8, 0x1F, 0xF8, 0x00, 0x00,
-        0x00, 0x00, 0x7F, 0xFE, 0x7F, 0xFE, 0x00, 0x00,
-        0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00,
-        0x00, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0x80, 0x00,
-        0x00, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0x80, 0x00,
-        0x00, 0x03, 0xFF, 0xFF, 0xFF, 0xFF, 0xC0, 0x00,
-        0x00, 0x03, 0xFF, 0xFF, 0xFF, 0xFF, 0xC0, 0x00,
-        0x00, 0x03, 0xFF, 0xFF, 0xFF, 0xFF, 0xC0, 0x00,
-        0x00, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0x80, 0x00,
-        0x00, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0x80, 0x00,
-        0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00,
-        0x00, 0x00, 0x7F, 0xFF, 0xFF, 0xFE, 0x00, 0x00,
-        0x00, 0x00, 0x3F, 0xFF, 0xFF, 0xFC, 0x00, 0x00,
-        0x00, 0x00, 0x1F, 0xFF, 0xFF, 0xF8, 0x00, 0x00,
-        0x00, 0x00, 0x0F, 0xFF, 0xFF, 0xF0, 0x00, 0x00,
-        0x00, 0x00, 0x07, 0xFF, 0xFF, 0xE0, 0x00, 0x00,
-        0x00, 0x00, 0x03, 0xFF, 0xFF, 0xC0, 0x00, 0x00,
-        0x00, 0x00, 0x01, 0xFF, 0xFF, 0x80, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x7F, 0xFE, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x3F, 0xFC, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x1F, 0xF8, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x0F, 0xF0, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x07, 0xE0, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x03, 0xC0, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-    ],
-    # Frame 2 - Maximum expansion (lub peak)
-    [
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x3F, 0xFC, 0x3F, 0xFC, 0x00, 0x00,
-        0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00,
-        0x00, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0x80, 0x00,
-        0x00, 0x03, 0xFF, 0xFF, 0xFF, 0xFF, 0xC0, 0x00,
-        0x00, 0x07, 0xFF, 0xFF, 0xFF, 0xFF, 0xE0, 0x00,
-        0x00, 0x07, 0xFF, 0xFF, 0xFF, 0xFF, 0xE0, 0x00,
-        0x00, 0x0F, 0xFF, 0xFF, 0xFF, 0xFF, 0xF0, 0x00,
-        0x00, 0x0F, 0xFF, 0xFF, 0xFF, 0xFF, 0xF0, 0x00,
-        0x00, 0x0F, 0xFF, 0xFF, 0xFF, 0xFF, 0xF0, 0x00,
-        0x00, 0x07, 0xFF, 0xFF, 0xFF, 0xFF, 0xE0, 0x00,
-        0x00, 0x07, 0xFF, 0xFF, 0xFF, 0xFF, 0xE0, 0x00,
-        0x00, 0x03, 0xFF, 0xFF, 0xFF, 0xFF, 0xC0, 0x00,
-        0x00, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0x80, 0x00,
-        0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00,
-        0x00, 0x00, 0x7F, 0xFF, 0xFF, 0xFE, 0x00, 0x00,
-        0x00, 0x00, 0x3F, 0xFF, 0xFF, 0xFC, 0x00, 0x00,
-        0x00, 0x00, 0x1F, 0xFF, 0xFF, 0xF8, 0x00, 0x00,
-        0x00, 0x00, 0x0F, 0xFF, 0xFF, 0xF0, 0x00, 0x00,
-        0x00, 0x00, 0x07, 0xFF, 0xFF, 0xE0, 0x00, 0x00,
-        0x00, 0x00, 0x03, 0xFF, 0xFF, 0xC0, 0x00, 0x00,
-        0x00, 0x00, 0x01, 0xFF, 0xFF, 0x80, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x7F, 0xFE, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x3F, 0xFC, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x1F, 0xF8, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x0F, 0xF0, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-    ],
-    # Frame 3-8 - Return to normal (contraction after lub)
-    [
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x1F, 0xF8, 0x1F, 0xF8, 0x00, 0x00,
-        0x00, 0x00, 0x7F, 0xFE, 0x7F, 0xFE, 0x00, 0x00,
-        0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00,
-        0x00, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0x80, 0x00,
-        0x00, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0x80, 0x00,
-        0x00, 0x03, 0xFF, 0xFF, 0xFF, 0xFF, 0xC0, 0x00,
-        0x00, 0x03, 0xFF, 0xFF, 0xFF, 0xFF, 0xC0, 0x00,
-        0x00, 0x03, 0xFF, 0xFF, 0xFF, 0xFF, 0xC0, 0x00,
-        0x00, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0x80, 0x00,
-        0x00, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0x80, 0x00,
-        0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00,
-        0x00, 0x00, 0x7F, 0xFF, 0xFF, 0xFE, 0x00, 0x00,
-        0x00, 0x00, 0x3F, 0xFF, 0xFF, 0xFC, 0x00, 0x00,
-        0x00, 0x00, 0x1F, 0xFF, 0xFF, 0xF8, 0x00, 0x00,
-        0x00, 0x00, 0x0F, 0xFF, 0xFF, 0xF0, 0x00, 0x00,
-        0x00, 0x00, 0x07, 0xFF, 0xFF, 0xE0, 0x00, 0x00,
-        0x00, 0x00, 0x03, 0xFF, 0xFF, 0xC0, 0x00, 0x00,
-        0x00, 0x00, 0x01, 0xFF, 0xFF, 0x80, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x7F, 0xFE, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x3F, 0xFC, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x1F, 0xF8, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x0F, 0xF0, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x07, 0xE0, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x03, 0xC0, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-    ],
-    # Frame 4 - Back to starting position
-    [
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x0F, 0xF0, 0x0F, 0xF0, 0x00, 0x00,
-        0x00, 0x00, 0x3F, 0xFC, 0x3F, 0xFC, 0x00, 0x00,
-        0x00, 0x00, 0x7F, 0xFE, 0x7F, 0xFE, 0x00, 0x00,
-        0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00,
-        0x00, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0x80, 0x00,
-        0x00, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0x80, 0x00,
-        0x00, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0x80, 0x00,
-        0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00,
-        0x00, 0x00, 0x7F, 0xFF, 0xFF, 0xFE, 0x00, 0x00,
-        0x00, 0x00, 0x3F, 0xFF, 0xFF, 0xFC, 0x00, 0x00,
-        0x00, 0x00, 0x1F, 0xFF, 0xFF, 0xF8, 0x00, 0x00,
-        0x00, 0x00, 0x0F, 0xFF, 0xFF, 0xF0, 0x00, 0x00,
-        0x00, 0x00, 0x07, 0xFF, 0xFF, 0xE0, 0x00, 0x00,
-        0x00, 0x00, 0x03, 0xFF, 0xFF, 0xC0, 0x00, 0x00,
-        0x00, 0x00, 0x01, 0xFF, 0xFF, 0x80, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x7F, 0xFE, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x3F, 0xFC, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x1F, 0xF8, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x0F, 0xF0, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x07, 0xE0, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x03, 0xC0, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x01, 0x80, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-    ]
-    # Note: In a complete implementation, you would have all 30 frames here
-    # representing the full heartbeat cycle with lub-dub pattern
-]
-
-def draw_heart_frame(draw, frame_index):
-    """Draw a heart using pre-defined bitmap frame data"""
-    if frame_index >= len(heart_frames):
-        frame_index = 0
+def draw_large_digit(draw, digit, x, y, size=3):
+    """Draw a large, bold digit using thick lines"""
+    # Define patterns for large digits (scalable)
+    # Each digit is drawn as a series of thick rectangles
     
-    frame_data = heart_frames[frame_index]
+    thick = size  # Thickness of lines
+    width = size * 4  # Width of digit
+    height = size * 6  # Height of digit
     
-    # Convert bitmap data to pixels
-    # Each byte represents 8 horizontal pixels
-    # 64x64 frame = 64 rows × 8 bytes per row = 512 bytes total
-    # But we're using a simplified version with fewer bytes
-    
-    # Center the 64x64 heart on 128x64 display (left side)
-    offset_x = 10  # 10 pixels from left (leave room for counter)
-    offset_y = (HEIGHT - 64) // 2  # 0 pixels from top (64 = display height)
-    
-    for row in range(min(28, len(frame_data) // 8)):  # Adjust for available data
-        for byte_idx in range(8):
-            if row * 8 + byte_idx < len(frame_data):
-                byte_val = frame_data[row * 8 + byte_idx]
-                
-                # Draw each bit as a pixel (but smaller to fit counter)
-                for bit in range(6):  # Use only 6 bits instead of 8 to make room
-                    if byte_val & (0x80 >> bit):  # Check if bit is set
-                        x = offset_x + byte_idx * 6 + bit
-                        y = offset_y + row
-                        if 0 <= x < WIDTH - 30 and 0 <= y < HEIGHT:  # Leave room for counter
-                            draw.point((x, y), fill=255)
-
-def draw_counter_display(draw, counter_value):
-    """Draw the counter on the right side of the display"""
-    # Counter position (right side)
-    counter_x = WIDTH - 25
-    counter_y = 10
-    
-    # Draw "Count:" label
-    label_text = "CNT"
-    for i, char in enumerate(label_text):
-        char_x = counter_x + i * 6
-        char_y = counter_y
-        # Simple 5x7 pixel font for "CNT"
-        if char == 'C':
-            # Draw C shape
-            for y in range(5):
-                draw.point((char_x, char_y + y), fill=255)
-            draw.point((char_x + 1, char_y), fill=255)
-            draw.point((char_x + 1, char_y + 4), fill=255)
-        elif char == 'N':
-            # Draw N shape
-            for y in range(5):
-                draw.point((char_x, char_y + y), fill=255)
-                draw.point((char_x + 2, char_y + y), fill=255)
-            draw.point((char_x + 1, char_y + 2), fill=255)
-        elif char == 'T':
-            # Draw T shape
-            for x in range(3):
-                draw.point((char_x + x, char_y), fill=255)
-            for y in range(5):
-                draw.point((char_x + 1, char_y + y), fill=255)
-    
-    # Draw counter value (numbers)
-    number_y = counter_y + 15
-    counter_str = str(counter_value)
-    
-    for i, digit_char in enumerate(counter_str):
-        digit = int(digit_char)
-        digit_x = counter_x + i * 8
+    if digit == 0:
+        # Draw outer rectangle
+        draw.rectangle([x, y, x + width, y + thick], fill=255)  # top
+        draw.rectangle([x, y + height - thick, x + width, y + height], fill=255)  # bottom
+        draw.rectangle([x, y, x + thick, y + height], fill=255)  # left
+        draw.rectangle([x + width - thick, y, x + width, y + height], fill=255)  # right
         
-        # Simple 7-segment style display for digits
-        draw_digit(draw, digit, digit_x, number_y)
+    elif digit == 1:
+        # Vertical line on right
+        draw.rectangle([x + width - thick, y, x + width, y + height], fill=255)
+        # Top angled part
+        draw.rectangle([x + width//2, y, x + width - thick, y + thick], fill=255)
+        
+    elif digit == 2:
+        # Top horizontal
+        draw.rectangle([x, y, x + width, y + thick], fill=255)
+        # Middle horizontal
+        draw.rectangle([x, y + height//2 - thick//2, x + width, y + height//2 + thick//2], fill=255)
+        # Bottom horizontal
+        draw.rectangle([x, y + height - thick, x + width, y + height], fill=255)
+        # Top right vertical
+        draw.rectangle([x + width - thick, y, x + width, y + height//2], fill=255)
+        # Bottom left vertical
+        draw.rectangle([x, y + height//2, x + thick, y + height], fill=255)
+        
+    elif digit == 3:
+        # Top horizontal
+        draw.rectangle([x, y, x + width, y + thick], fill=255)
+        # Middle horizontal
+        draw.rectangle([x, y + height//2 - thick//2, x + width, y + height//2 + thick//2], fill=255)
+        # Bottom horizontal
+        draw.rectangle([x, y + height - thick, x + width, y + height], fill=255)
+        # Right vertical
+        draw.rectangle([x + width - thick, y, x + width, y + height], fill=255)
+        
+    elif digit == 4:
+        # Left vertical (top half)
+        draw.rectangle([x, y, x + thick, y + height//2 + thick//2], fill=255)
+        # Right vertical (full)
+        draw.rectangle([x + width - thick, y, x + width, y + height], fill=255)
+        # Middle horizontal
+        draw.rectangle([x, y + height//2 - thick//2, x + width, y + height//2 + thick//2], fill=255)
+        
+    elif digit == 5:
+        # Top horizontal
+        draw.rectangle([x, y, x + width, y + thick], fill=255)
+        # Middle horizontal
+        draw.rectangle([x, y + height//2 - thick//2, x + width, y + height//2 + thick//2], fill=255)
+        # Bottom horizontal
+        draw.rectangle([x, y + height - thick, x + width, y + height], fill=255)
+        # Top left vertical
+        draw.rectangle([x, y, x + thick, y + height//2], fill=255)
+        # Bottom right vertical
+        draw.rectangle([x + width - thick, y + height//2, x + width, y + height], fill=255)
+        
+    elif digit == 6:
+        # Top horizontal
+        draw.rectangle([x, y, x + width, y + thick], fill=255)
+        # Middle horizontal
+        draw.rectangle([x, y + height//2 - thick//2, x + width, y + height//2 + thick//2], fill=255)
+        # Bottom horizontal
+        draw.rectangle([x, y + height - thick, x + width, y + height], fill=255)
+        # Left vertical (full)
+        draw.rectangle([x, y, x + thick, y + height], fill=255)
+        # Bottom right vertical
+        draw.rectangle([x + width - thick, y + height//2, x + width, y + height], fill=255)
+        
+    elif digit == 7:
+        # Top horizontal
+        draw.rectangle([x, y, x + width, y + thick], fill=255)
+        # Right vertical
+        draw.rectangle([x + width - thick, y, x + width, y + height], fill=255)
+        
+    elif digit == 8:
+        # All segments
+        draw.rectangle([x, y, x + width, y + thick], fill=255)  # top
+        draw.rectangle([x, y + height//2 - thick//2, x + width, y + height//2 + thick//2], fill=255)  # middle
+        draw.rectangle([x, y + height - thick, x + width, y + height], fill=255)  # bottom
+        draw.rectangle([x, y, x + thick, y + height], fill=255)  # left
+        draw.rectangle([x + width - thick, y, x + width, y + height], fill=255)  # right
+        
+    elif digit == 9:
+        # Top horizontal
+        draw.rectangle([x, y, x + width, y + thick], fill=255)
+        # Middle horizontal
+        draw.rectangle([x, y + height//2 - thick//2, x + width, y + height//2 + thick//2], fill=255)
+        # Bottom horizontal
+        draw.rectangle([x, y + height - thick, x + width, y + height], fill=255)
+        # Top left vertical
+        draw.rectangle([x, y, x + thick, y + height//2], fill=255)
+        # Right vertical (full)
+        draw.rectangle([x + width - thick, y, x + width, y + height], fill=255)
 
-def draw_digit(draw, digit, x, y):
-    """Draw a digit using a simple 7-segment style display"""
-    # Define 7-segment patterns for each digit
-    segments = {
-        0: [1, 1, 1, 1, 1, 1, 0],  # a, b, c, d, e, f, g
-        1: [0, 1, 1, 0, 0, 0, 0],
-        2: [1, 1, 0, 1, 1, 0, 1],
-        3: [1, 1, 1, 1, 0, 0, 1],
-        4: [0, 1, 1, 0, 0, 1, 1],
-        5: [1, 0, 1, 1, 0, 1, 1],
-        6: [1, 0, 1, 1, 1, 1, 1],
-        7: [1, 1, 1, 0, 0, 0, 0],
-        8: [1, 1, 1, 1, 1, 1, 1],
-        9: [1, 1, 1, 1, 0, 1, 1]
-    }
+def draw_plus_sign(draw, x, y, size=3):
+    """Draw a large, bold plus sign"""
+    thick = size
+    width = size * 3
+    height = size * 3
     
-    if digit in segments:
-        pattern = segments[digit]
-        
-        # Draw horizontal segments (a, d, g)
-        if pattern[0]:  # top (a)
-            for px in range(3):
-                draw.point((x + px + 1, y), fill=255)
-        if pattern[3]:  # bottom (d)
-            for px in range(3):
-                draw.point((x + px + 1, y + 6), fill=255)
-        if pattern[6]:  # middle (g)
-            for px in range(3):
-                draw.point((x + px + 1, y + 3), fill=255)
-        
-        # Draw vertical segments (b, c, e, f)
-        if pattern[1]:  # top right (b)
-            for py in range(3):
-                draw.point((x + 4, y + py + 1), fill=255)
-        if pattern[2]:  # bottom right (c)
-            for py in range(3):
-                draw.point((x + 4, y + py + 4), fill=255)
-        if pattern[4]:  # bottom left (e)
-            for py in range(3):
-                draw.point((x, y + py + 4), fill=255)
-        if pattern[5]:  # top left (f)
-            for py in range(3):
-                draw.point((x, y + py + 1), fill=255)
+    # Horizontal line
+    draw.rectangle([x, y + height//2 - thick//2, x + width, y + height//2 + thick//2], fill=255)
+    # Vertical line
+    draw.rectangle([x + width//2 - thick//2, y, x + width//2 + thick//2, y + height], fill=255)
 
-def check_button():
-    """Check button state with debouncing (polling method)"""
-    global counter, last_button_time
+def display_equation():
+    """Display the large equation NUMBER + NUMBER"""
+    global left_counter, right_counter
+    
+    # Clear the display
+    image = Image.new("1", (WIDTH, HEIGHT))
+    draw = ImageDraw.Draw(image)
+    
+    # Calculate numbers from counters (0-9 cycle)
+    left_number = left_counter % 10
+    right_number = right_counter % 10
+    
+    # Position calculations for centering (larger size=4)
+    digit_width = 16  # 4 * 4
+    plus_width = 12   # 4 * 3
+    spacing = 6
+    
+    total_width = digit_width + spacing + plus_width + spacing + digit_width
+    start_x = (WIDTH - total_width) // 2
+    start_y = (HEIGHT - 24) // 2  # 24 = 4 * 6 (digit height)
+    
+    # Draw left number
+    draw_large_digit(draw, left_number, start_x, start_y, size=4)
+    
+    # Draw plus sign
+    plus_x = start_x + digit_width + spacing
+    plus_y = start_y + 6  # Center vertically with digits
+    draw_plus_sign(draw, plus_x, plus_y, size=4)
+    
+    # Draw right number
+    right_x = plus_x + plus_width + spacing
+    draw_large_digit(draw, right_number, right_x, start_y, size=4)
+    
+    # Counter info removed - clean display with only large numbers
+    
+    # Update display
+    display.image(image)
+    display.show()
+
+def check_buttons():
+    """Check both button states with debouncing (polling method)"""
+    global left_counter, right_counter, last_left_button_time, last_right_button_time
     current_time = time.time()
     
-    # Check if button is pressed (LOW when pressed with pull-up resistor)
-    if GPIO.input(BUTTON_PIN) == GPIO.LOW:
+    # Check left button (GPIO 17)
+    if GPIO.input(LEFT_BUTTON_PIN) == GPIO.LOW:
         # Debounce: ignore button presses within 0.3 seconds
-        if current_time - last_button_time > 0.3:
-            counter += 1
-            last_button_time = current_time
-            print(f"Button pressed! Counter: {counter}")
+        if current_time - last_left_button_time > 0.3:
+            left_counter += 1
+            last_left_button_time = current_time
+            print(f"Left button pressed! Left counter: {left_counter}")
             
             # Wait for button release to avoid multiple triggers
-            while GPIO.input(BUTTON_PIN) == GPIO.LOW:
+            while GPIO.input(LEFT_BUTTON_PIN) == GPIO.LOW:
+                time.sleep(0.01)
+    
+    # Check right button (GPIO 4)
+    if GPIO.input(RIGHT_BUTTON_PIN) == GPIO.LOW:
+        # Debounce: ignore button presses within 0.3 seconds
+        if current_time - last_right_button_time > 0.3:
+            right_counter += 1
+            last_right_button_time = current_time
+            print(f"Right button pressed! Right counter: {right_counter}")
+            
+            # Wait for button release to avoid multiple triggers
+            while GPIO.input(RIGHT_BUTTON_PIN) == GPIO.LOW:
                 time.sleep(0.01)
 
-def setup_button():
-    """Setup GPIO button (polling method)"""
+def setup_buttons():
+    """Setup GPIO buttons (polling method)"""
     GPIO.setmode(GPIO.BCM)
-    GPIO.setup(BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    GPIO.setup(LEFT_BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    GPIO.setup(RIGHT_BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
-def beating_heart():
-    print("💖 Starting Arduino-style beating heart animation...")
-    print("🎬 Using frame-based animation with counter display")
+def number_display():
+    print("� Starting NUMBER + NUMBER display...")
+    print("📟 Large, bold digit display")
     print("🔘 Press button on GPIO 17 to increment counter")
     print("Press Ctrl+C to stop")
     
-    frame_count = len(heart_frames)
-    current_frame = 0
-    
     while True:
         # Check button state
-        check_button()
+        check_buttons()
         
-        # Clear the display
-        image = Image.new("1", (WIDTH, HEIGHT))
-        draw = ImageDraw.Draw(image)
+        # Display the equation
+        display_equation()
         
-        # Draw current heart frame
-        draw_heart_frame(draw, current_frame)
-        
-        # Draw counter display
-        draw_counter_display(draw, counter)
-        
-        # Add frame counter for debugging (bottom left corner)
-        frame_text = f"F:{current_frame:02d}"
-        text_x = 5
-        text_y = HEIGHT - 10
-        for i, char in enumerate(frame_text):
-            if char.isdigit() or char in "F:":
-                char_x = text_x + i * 4
-                if char_x + 3 < WIDTH and text_y + 5 < HEIGHT:
-                    if char.isdigit():
-                        digit = int(char)
-                        if digit in [0, 2, 3, 5, 6, 7, 8, 9]:
-                            draw.point((char_x, text_y), fill=255)
-                            draw.point((char_x + 2, text_y), fill=255)
-                        if digit in [1, 4, 7]:
-                            draw.point((char_x + 1, text_y), fill=255)
-        
-        # Update display
-        display.image(image)
-        display.show()
-        
-        # Arduino-style timing: 42ms per frame for smooth animation
-        time.sleep(0.042)
-        
-        # Move to next frame
-        current_frame = (current_frame + 1) % frame_count
+        # Small delay for responsiveness
+        time.sleep(0.1)
 
 def main():
-    print("=== OLED Beating Heart Display ===")
+    print("=== OLED Number Display ===")
     print("Raspberry Pi 3 Model B - I2C OLED")
-    print("🎨 Arduino-style Frame Animation")
-    print("🔘 Button Counter on GPIO 17")
+    print("🔢 Large Bold Number + Number Display")
+    print("🔘 Two Button Control System")
     print("\n🔌 Wiring Instructions:")
     print("  OLED GND → Pi GND (Pin 6)")
     print("  OLED VCC → Pi 3.3V (Pin 1)")
     print("  OLED SCL → Pi GPIO 3 (Pin 5)")
     print("  OLED SDA → Pi GPIO 2 (Pin 3)")
-    print("  Button → Pi GPIO 17 (Pin 11) + GND")
+    print("  Left Button → Pi GPIO 17 (Pin 11) + GND")
+    print("  Right Button → Pi GPIO 4 (Pin 7) + GND")
     print("\n🛠️  Make sure I2C is enabled!")
     print("  Run: sudo raspi-config → Interface → I2C → Enable")
-    print(f"\n🎬 Animation Info:")
-    print(f"  Frames: {len(heart_frames)}")
-    print(f"  Frame Rate: ~24 FPS (42ms per frame)")
-    print(f"  Style: Bitmap-based (Arduino-inspired)")
-    print("\nInitializing display and button...")
+    print(f"\n🔢 Display Info:")
+    print(f"  Format: LEFT_NUMBER + RIGHT_NUMBER")
+    print(f"  Range: 0-9 (each cycles back to 0)")
+    print(f"  Control: Independent button control")
+    print(f"  Style: Large, bold digits")
+    print("\nInitializing display and buttons...")
     
     try:
-        # Setup button GPIO
-        setup_button()
-        print("✅ Button setup complete!")
+        # Setup buttons GPIO
+        setup_buttons()
+        print("✅ Buttons setup complete!")
         
         # Initialize display
         display.fill(0)
         display.show()
         print("✅ Display initialized successfully!")
         
-        beating_heart()
+        number_display()
         
     except KeyboardInterrupt:
-        print("\n🛑 Stopping heartbeat...")
+        print("\n🛑 Stopping display...")
         display.fill(0)
         display.show()
-        print("💔 Heart stopped. Goodbye!")
+        print("� Display stopped. Goodbye!")
         
     except Exception as e:
         print(f"❌ Error: {e}")
@@ -423,7 +282,7 @@ def main():
         print("  - Reboot after enabling I2C")
         print("  - Run: sudo i2cdetect -y 1")
         print("  - Check if SSD1306 OLED is detected")
-        print("  - Check button wiring to GPIO 17")
+        print("  - Check button wiring to GPIO 17 and GPIO 4")
         
     finally:
         # Clean up GPIO
