@@ -161,8 +161,6 @@ if __name__ == '__main__':
             # Light up the strip with the drawn color
             light_color(strip, color, binary_value)
             
-            # Wait 3 seconds to show the result
-            time.sleep(3)
             
             print("Press the button (GPIO 17) to restart alternation or Ctrl-C to exit.")
             # Wait for button press to restart
