@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Experiment Controller with Graceful Shutdown
-Switches between ex1.py and ex2.py with proper cleanup
+Switches between ex1.py and ex3.py with proper cleanup
 """
 
 import subprocess
@@ -10,7 +10,6 @@ import os
 import time
 import signal
 import threading
-import queue
 
 class ExperimentController:
     def __init__(self):
@@ -122,7 +121,7 @@ except Exception as e:
         """Start an experiment with proper monitoring."""
         experiments = {
             1: ('ex1.py', 'LED Color Lottery System'),
-            2: ('ex2.py', 'Quantum Toffoli Gate')
+            3: ('ex3.py', 'Quantum Toffoli Gate')
         }
         
         if exp_num not in experiments:
@@ -182,7 +181,7 @@ except Exception as e:
         self._graceful_shutdown()
         
         # Switch to the other experiment
-        self.current_experiment = 2 if self.current_experiment == 1 else 1
+        self.current_experiment = 3 if self.current_experiment == 1 else 1
         
         # Small delay to ensure cleanup is complete
         time.sleep(1)
@@ -195,7 +194,7 @@ except Exception as e:
             
     def show_status(self):
         """Show current status."""
-        exp_names = {1: "ex1.py (LED Lottery)", 2: "ex2.py (Quantum Toffoli)"}
+        exp_names = {1: "ex1.py (LED Lottery)", 3: "ex3.py (Quantum Toffoli)"}
         status = "Running" if self.process and self.process.poll() is None else "Stopped"
         
         print(f"\n📊 Status: {status}")
@@ -223,7 +222,7 @@ except Exception as e:
         print("  1️⃣  ex1.py - LED Color Lottery")
         print("      🎰 Random lottery system with GPIO 17 button")
         print("      🔴🔵 Alternating colors until button press")
-        print("  2️⃣  ex2.py - Quantum Toffoli Gate")
+        print("  3️⃣  ex3.py - Quantum Toffoli Gate")
         print("      ⚛️  Quantum AND gate with GPIO 26 & 20 buttons")
         print("      🔴🔵 Shows quantum computation results")
         print("\n🎮 Commands:")

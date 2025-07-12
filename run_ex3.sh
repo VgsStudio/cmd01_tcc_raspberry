@@ -1,5 +1,5 @@
 #!/bin/bash
-# Quantum Gates Script - Ex2
+# Quantum Gates Script - Ex3
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -7,4 +7,4 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 # Run the Python script using the virtual environment
-sudo "$SCRIPT_DIR/venv/bin/python" ex2.py
+sudo "$SCRIPT_DIR/venv/bin/python" ex3.py
