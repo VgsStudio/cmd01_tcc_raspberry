@@ -220,10 +220,10 @@ except Exception as e:
         """Show help information."""
         print("\n📋 Available Experiments:")
         print("  1️⃣  ex1.py - LED Color Lottery")
-        print("      🎰 Random lottery system with GPIO 17 button")
+        print("      🎰 Random lottery system with GPIO 26 button")
         print("      🔴🔵 Alternating colors until button press")
         print("  3️⃣  ex3.py - Quantum Toffoli Gate")
-        print("      ⚛️  Quantum AND gate with GPIO 26 & 20 buttons")
+        print("      ⚛️  Quantum AND gate with GPIO 17 & 4 buttons")
         print("      🔴🔵 Shows quantum computation results")
         print("\n🎮 Commands:")
         print("  v = Toggle between experiments")
