@@ -225,8 +225,8 @@ def draw_loading_spinner(draw, frame):
     
     # Draw bitmap animation if frames are loaded
     if animation_loaded and animation_frames:
-        # Calculate which frame to show (slower animation for smoother effect)
-        current_frame_index = (frame // 2) % len(animation_frames)  # Change frame every 2 cycles
+        # Calculate which frame to show (fast animation for 30 FPS effect)
+        current_frame_index = frame % len(animation_frames)  # Change frame every cycle for max speed
         current_frame = animation_frames[current_frame_index]
         
         # Center the animation perfectly on the 128x64 display
@@ -381,8 +381,8 @@ def display_equation():
         draw_large_digit(draw, right_number, right_x, start_y, size=4)
         
     elif current_display_state == DISPLAY_LOADING:
-        # Show loading animation
-        frame = int((time.time() * 10) % 80)  # Animation frame
+        # Show loading animation at 30 FPS
+        frame = int((time.time() * 30) % (30 * len(animation_frames) if animation_frames else 240))  # 30 FPS animation
         draw_loading_spinner(draw, frame)
         
     elif current_display_state == DISPLAY_RESULT:
@@ -468,7 +468,7 @@ def check_buttons():
                     # Show loading animation while calculation is running
                     while not calculation_done:
                         display_equation()  # This will show the loading animation
-                        time.sleep(0.05)  # Smooth animation
+                        time.sleep(0.033)  # 30 FPS refresh rate
                     
                     calc_thread.join()
                     
@@ -512,8 +512,8 @@ def number_display():
         # Display the appropriate screen
         display_equation()
         
-        # Faster refresh for smooth animations
-        time.sleep(0.05)
+        # Higher refresh rate for 30 FPS animation
+        time.sleep(0.033)  # ~30 FPS (1/30 = 0.033 seconds)
 
 def main():
     print("=== OLED Number Display with Calculator ===")
