@@ -6,6 +6,7 @@ import os
 from PIL import Image, ImageDraw
 import adafruit_ssd1306
 import RPi.GPIO as GPIO
+from rpi_ws281x import *
 from calculator import calculate_sum, format_result, validate_inputs
 
 # I2C pins for OLED
@@ -17,6 +18,15 @@ from calculator import calculate_sum, format_result, validate_inputs
 # OLED VCC → 3.3V or 5V
 # OLED GND → Ground
 i2c = busio.I2C(scl=board.D3, sda=board.D2)
+
+# LED Strip Configuration
+LED_COUNT      = 60      # Number of LEDs in the strip
+LED_PIN        = 18      # GPIO 18 for LED strip
+LED_FREQ_HZ    = 800000  # LED signal frequency (usually 800khz)
+LED_DMA        = 10      # DMA channel
+LED_BRIGHTNESS = 200     # Brightness from 0 to 255
+LED_INVERT     = False   # Set to True if signal needs to be inverted
+LED_CHANNEL    = 0       # LED channel
 
 # Button Configuration
 LEFT_BUTTON_PIN = 17   # GPIO 17 for left number
@@ -49,9 +59,14 @@ FRAMES = 30  # Number of frames in the animation
 animation_frames = []  # Will store loaded animation frames
 animation_loaded = False
 
+# LED Strip Control
+led_strip = None
+led_pattern_active = False
+led_thread = None
+
 display = adafruit_ssd1306.SSD1306_I2C(WIDTH, HEIGHT, i2c)
 
-def draw_large_digit(draw, digit, x, y, size=3):
+def draw_large_digit(draw, digit, x, y, size=5):
     """Draw a large, bold digit using thick lines"""
     # Define patterns for large digits (scalable)
     # Each digit is drawn as a series of thick rectangles
@@ -153,6 +168,88 @@ def draw_large_digit(draw, digit, x, y, size=3):
         # Right vertical (full)
         draw.rectangle([x + width - thick, y, x + width, y + height], fill=255)
 
+def clear_led_strip():
+    """Turns OFF all LEDs on the strip."""
+    global led_strip
+    if led_strip is not None:
+        for i in range(led_strip.numPixels()):
+            led_strip.setPixelColor(i, Color(0, 0, 0))
+        led_strip.show()
+
+def set_led_strip_color(color):
+    """Sets the entire LED strip to a specific color."""
+    global led_strip
+    if led_strip is not None:
+        for i in range(led_strip.numPixels()):
+            led_strip.setPixelColor(i, color)
+        led_strip.show()
+
+def mixed_alternating_colors_thread():
+    """LED alternating pattern similar to ex1.py - runs in background thread."""
+    global led_pattern_active, led_strip
+    
+    if led_strip is None:
+        return
+    
+    # Create different starting colors for each LED
+    led_colors = []
+    for i in range(led_strip.numPixels()):
+        # Even LEDs start with red (0), odd LEDs start with blue (1)
+        led_colors.append(i % 2)
+    
+    while led_pattern_active:
+        # Draw current pattern
+        for i in range(led_strip.numPixels()):
+            if led_colors[i] == 1:
+                led_strip.setPixelColor(i, Color(0, 0, 255))  # Blue
+            else:
+                led_strip.setPixelColor(i, Color(255, 0, 0))  # Red
+        
+        led_strip.show()
+        time.sleep(0.2)  # 0.2 seconds between changes
+        
+        # Toggle each LED's color
+        for i in range(led_strip.numPixels()):
+            led_colors[i] = 1 - led_colors[i]  # Toggle between 0 and 1
+
+def start_led_alternating_pattern():
+    """Start the LED alternating pattern in a background thread."""
+    global led_pattern_active, led_thread
+    
+    if led_strip is None:
+        return
+        
+    # Stop any existing pattern
+    stop_led_pattern()
+    
+    led_pattern_active = True
+    led_thread = threading.Thread(target=mixed_alternating_colors_thread)
+    led_thread.daemon = True
+    led_thread.start()
+
+def stop_led_pattern():
+    """Stop the LED alternating pattern."""
+    global led_pattern_active, led_thread
+    
+    led_pattern_active = False
+    if led_thread is not None and led_thread.is_alive():
+        led_thread.join(timeout=1)  # Wait up to 1 second for thread to finish
+
+def setup_led_strip():
+    """Initialize the LED strip."""
+    global led_strip
+    
+    try:
+        led_strip = Adafruit_NeoPixel(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL)
+        led_strip.begin()
+        clear_led_strip()  # Start with LEDs off
+        print("✅ LED strip initialized successfully!")
+        return True
+    except Exception as e:
+        print(f"⚠️  LED strip initialization failed: {e}")
+        led_strip = None
+        return False
+
 def load_animation_frames():
     """Load animation frames from sprite sheet bitmap"""
     global animation_frames, animation_loaded
@@ -187,8 +284,8 @@ def load_animation_frames():
                 frame = sprite_sheet.crop(frame_box)
                 
                 # Make the atom bigger - resize to take up more of the display
-                # Use 80% of display height to make it prominent
-                display_size = int(HEIGHT * 0.8)  # Make it 80% of display height (about 51 pixels)
+                # Use 95% of display height to make it prominent
+                display_size = int(HEIGHT * 0.95)  # Make it 95% of display height (about 51 pixels)
                 frame = frame.resize((display_size, display_size), Image.NEAREST)
                 
                 animation_frames.append(frame)
@@ -355,6 +452,10 @@ def display_equation():
     draw = ImageDraw.Draw(image)
     
     if current_display_state == DISPLAY_EQUATION:
+        # Turn off LEDs when showing numbers/equation
+        stop_led_pattern()
+        clear_led_strip()
+        
         # Calculate numbers from counters (0-9 cycle)
         left_number = left_counter % 10
         right_number = right_counter % 10
@@ -381,11 +482,19 @@ def display_equation():
         draw_large_digit(draw, right_number, right_x, start_y, size=4)
         
     elif current_display_state == DISPLAY_LOADING:
+        # Start LED alternating pattern during calculation
+        if not led_pattern_active:
+            start_led_alternating_pattern()
+        
         # Show loading animation at 30 FPS
         frame = int((time.time() * 30) % (30 * len(animation_frames) if animation_frames else 240))  # 30 FPS animation
         draw_loading_spinner(draw, frame)
         
     elif current_display_state == DISPLAY_RESULT:
+        # Stop LED pattern and show blue when calculation is complete
+        stop_led_pattern()
+        set_led_strip_color(Color(0, 0, 255))  # Blue for result
+        
         # Show calculation result (stays until GPIO 26 pressed again)
         draw_result_display(draw, current_result)
     
@@ -528,6 +637,7 @@ def main():
     print("  Left Button → Pi GPIO 17 (Pin 11) + GND")
     print("  Right Button → Pi GPIO 4 (Pin 7) + GND")
     print("  Calculate Button → Pi GPIO 26 (Pin 37) + GND")
+    print("  LED Strip → Pi GPIO 18 (Pin 12) + 5V + GND")
     print("\n🛠️  Make sure I2C is enabled!")
     print("  Run: sudo raspi-config → Interface → I2C → Enable")
     print(f"\n🔢 Display Info:")
@@ -536,9 +646,16 @@ def main():
     print(f"  Control: Independent button control")
     print(f"  Calculator: GPIO 26 shows loading then result")
     print(f"  Style: Large, bold digits")
+    print(f"\n💡 LED Strip Behavior:")
+    print(f"  Equation Mode: LEDs OFF")
+    print(f"  Calculating: Red/Blue alternating pattern")
+    print(f"  Result Mode: Solid BLUE")
     print("\nInitializing display and buttons...")
     
     try:
+        # Setup LED strip
+        setup_led_strip()
+        
         # Setup buttons GPIO
         setup_buttons()
         print("✅ Buttons setup complete!")
@@ -552,9 +669,11 @@ def main():
         
     except KeyboardInterrupt:
         print("\n🛑 Stopping display...")
+        stop_led_pattern()
+        clear_led_strip()
         display.fill(0)
         display.show()
-        print("� Display stopped. Goodbye!")
+        print("✅ Display stopped. Goodbye!")
         
     except Exception as e:
         print(f"❌ Error: {e}")
@@ -567,6 +686,10 @@ def main():
         print("  - Check button wiring to GPIO 17, GPIO 4, and GPIO 26")
         
     finally:
+        # Stop LED patterns and clear strip
+        stop_led_pattern()
+        clear_led_strip()
+        
         # Clean up GPIO
         try:
             GPIO.cleanup()
