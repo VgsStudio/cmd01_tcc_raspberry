@@ -7,7 +7,7 @@ import RPi.GPIO as GPIO
 
 # I2C pins for OLED
 # Based on valid I2C ports: ((1, 3, 2), (0, 1, 0))
-# Using first valid port: SCL=def number_display():
+# Using first valid port: SCL=GPIO3, SDA=GPIO2
 # Connect your OLED as follows:
 # OLED SCK pin → Raspberry Pi GPIO 1 (Physical pin 28)
 # OLED SDA pin → Raspberry Pi GPIO 3 (Physical pin 5)
@@ -191,27 +191,21 @@ def check_buttons():
     
     # Check left button (GPIO 17)
     if GPIO.input(LEFT_BUTTON_PIN) == GPIO.LOW:
-        # Debounce: ignore button presses within 0.3 seconds
-        if current_time - last_left_button_time > 0.3:
+        # Debounce: ignore button presses within 0.2 seconds
+        if current_time - last_left_button_time > 0.1:
             left_counter += 1
             last_left_button_time = current_time
-            print(f"Left button pressed! Left counter: {left_counter}")
-            
-            # Wait for button release to avoid multiple triggers
-            while GPIO.input(LEFT_BUTTON_PIN) == GPIO.LOW:
-                time.sleep(0.01)
+            left_number = left_counter % 10
+            print(f"Left button pressed! Left number: {left_number}")
     
     # Check right button (GPIO 4)
     if GPIO.input(RIGHT_BUTTON_PIN) == GPIO.LOW:
-        # Debounce: ignore button presses within 0.3 seconds
-        if current_time - last_right_button_time > 0.3:
+        # Debounce: ignore button presses within 0.2 seconds
+        if current_time - last_right_button_time > 0.2:
             right_counter += 1
             last_right_button_time = current_time
-            print(f"Right button pressed! Right counter: {right_counter}")
-            
-            # Wait for button release to avoid multiple triggers
-            while GPIO.input(RIGHT_BUTTON_PIN) == GPIO.LOW:
-                time.sleep(0.01)
+            right_number = right_counter % 10
+            print(f"Right button pressed! Right number: {right_number}")
 
 def setup_buttons():
     """Setup GPIO buttons (polling method)"""
@@ -220,13 +214,14 @@ def setup_buttons():
     GPIO.setup(RIGHT_BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
 def number_display():
-    print("� Starting NUMBER + NUMBER display...")
+    print("🔢 Starting NUMBER + NUMBER display...")
     print("📟 Large, bold digit display")
-    print("🔘 Press button on GPIO 17 to increment counter")
+    print("🔘 Press left button (GPIO 17) to change left number")
+    print("🔘 Press right button (GPIO 4) to change right number")
     print("Press Ctrl+C to stop")
     
     while True:
-        # Check button state
+        # Check both button states
         check_buttons()
         
         # Display the equation
