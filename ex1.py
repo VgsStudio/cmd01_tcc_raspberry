@@ -17,7 +17,7 @@ LED_INVERT     = False   # Mude para True se o sinal precisar ser invertido.
 LED_CHANNEL    = 0       # Mude para '1' para GPIOs 13, 19, 41, 45 ou 53.
 
 # --- Button Configuration ---
-BUTTON_PIN     = 17      # GPIO 17 for button input
+BUTTON_PIN     = 26      # GPIO 26 for button input
 
 # --- Probability Configuration ---
 BLUE_PROBABILITY = 50    # Percentage chance for blue (1)
@@ -57,7 +57,7 @@ def alternate_colors(strip):
     """Continuously alternates between red and blue."""
     global alternating, current_color
     
-    print("Starting color alternation... Press the button (GPIO 17) to stop and enter lottery mode.")
+    print("Starting color alternation... Press the button (GPIO 26) to stop and enter lottery mode.")
     
     while alternating:
         draw_color(strip, current_color)
@@ -68,7 +68,7 @@ def mixed_alternating_colors(strip):
     """Different LEDs alternate in different orders creating a mixed pattern."""
     global alternating
     
-    print("Starting mixed alternation... Press the button (GPIO 17) to stop and enter lottery mode.")
+    print("Starting mixed alternation... Press the button (GPIO 26) to stop and enter lottery mode.")
     
     # Create different starting colors for each LED
     led_colors = []
@@ -137,7 +137,7 @@ if __name__ == '__main__':
     print(f'Blue Probability (1): {BLUE_PROBABILITY}%')
     print(f'Red Probability (0): {RED_PROBABILITY}%')
     print('Starting running alternation mode...')
-    print('Press the button (GPIO 17) to enter lottery mode...')
+    print('Press the button (GPIO 26) to enter lottery mode...')
     
     try:
         while True:
@@ -162,7 +162,7 @@ if __name__ == '__main__':
             light_color(strip, color, binary_value)
             
             
-            print("Press the button (GPIO 17) to restart alternation or Ctrl-C to exit.")
+            print("Press the button (GPIO 26) to restart alternation or Ctrl-C to exit.")
             # Wait for button press to restart
             while GPIO.input(BUTTON_PIN) == GPIO.HIGH:
                 time.sleep(0.01)
