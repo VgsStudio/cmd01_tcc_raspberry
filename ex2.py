@@ -1,6 +1,8 @@
 import time
 import board
 import busio
+import threading
+import os
 from PIL import Image, ImageDraw
 import adafruit_ssd1306
 import RPi.GPIO as GPIO
@@ -40,6 +42,12 @@ current_result = 0
 WIDTH = 128
 HEIGHT = 64
 BORDER = 0
+
+# Animation settings
+SPRITE_SIZE = (64, 64)  # Size of each animation frame
+FRAMES = 30  # Number of frames in the animation
+animation_frames = []  # Will store loaded animation frames
+animation_loaded = False
 
 display = adafruit_ssd1306.SSD1306_I2C(WIDTH, HEIGHT, i2c)
 
@@ -145,55 +153,127 @@ def draw_large_digit(draw, digit, x, y, size=3):
         # Right vertical (full)
         draw.rectangle([x + width - thick, y, x + width, y + height], fill=255)
 
+def load_animation_frames():
+    """Load animation frames from sprite sheet bitmap"""
+    global animation_frames, animation_loaded
+    
+    if animation_loaded:
+        return
+    
+    try:
+        # Load the sprite sheet bitmap
+        sprite_path = "./icons/atom.bmp"
+        if os.path.exists(sprite_path):
+            sprite_sheet = Image.open(sprite_path)
+            
+            # Convert to 1-bit (monochrome) if not already
+            if sprite_sheet.mode != '1':
+                sprite_sheet = sprite_sheet.convert('1')
+            
+            # Extract individual frames from the sprite sheet
+            frame_width = SPRITE_SIZE[0]
+            frame_height = SPRITE_SIZE[1]
+            
+            # Calculate how many frames we can actually extract from the sprite sheet
+            available_frames = min(FRAMES, sprite_sheet.size[0] // frame_width)
+            
+            for i in range(available_frames):
+                # Calculate frame position in sprite sheet
+                x = i * frame_width
+                y = 0
+                
+                # Extract frame
+                frame_box = (x, y, x + frame_width, y + frame_height)
+                frame = sprite_sheet.crop(frame_box)
+                
+                # Make the atom bigger - resize to take up more of the display
+                # Use 80% of display height to make it prominent
+                display_size = int(HEIGHT * 0.8)  # Make it 80% of display height (about 51 pixels)
+                frame = frame.resize((display_size, display_size), Image.NEAREST)
+                
+                animation_frames.append(frame)
+            
+            # If we have fewer frames than requested, duplicate frames to reach 30
+            if len(animation_frames) < FRAMES and len(animation_frames) > 0:
+                original_frames = animation_frames.copy()
+                while len(animation_frames) < FRAMES:
+                    # Add frames by cycling through original frames
+                    frame_to_add = original_frames[len(animation_frames) % len(original_frames)]
+                    animation_frames.append(frame_to_add)
+            
+            animation_loaded = True
+            print(f"✅ Loaded {len(animation_frames)} animation frames (requested {FRAMES})")
+            
+        else:
+            print(f"⚠️  Animation file not found: {sprite_path}")
+            animation_loaded = False
+            
+    except Exception as e:
+        print(f"❌ Error loading animation: {e}")
+        animation_loaded = False
+
 def draw_loading_spinner(draw, frame):
-    """Draw a spinning loading animation"""
-    center_x = WIDTH // 2
-    center_y = HEIGHT // 2
-    radius = 15
+    """Draw a bitmap-based loading animation"""
+    global animation_frames, animation_loaded
+    
+    # Load animation frames if not already loaded
+    if not animation_loaded:
+        load_animation_frames()
     
     # Clear the display
     draw.rectangle([0, 0, WIDTH, HEIGHT], fill=0)
     
-    # Draw "CALCULATING..." text
-    text = "CALCULATING..."
-    text_width = len(text) * 4
-    text_x = (WIDTH - text_width) // 2
-    text_y = center_y - 25
-    
-    # Simple pixel-based text
-    for i, char in enumerate(text):
-        char_x = text_x + i * 4
-        if char_x + 3 < WIDTH and char != '.' and char != ' ':
-            draw.point((char_x, text_y), fill=255)
-            draw.point((char_x + 1, text_y), fill=255)
-    
-    # Draw dots for "..."
-    dot_positions = [i for i, char in enumerate(text) if char == '.']
-    for i, dot_pos in enumerate(dot_positions):
-        dot_x = text_x + dot_pos * 4
-        if (frame // 10) % 3 > i:  # Animated dots
-            draw.point((dot_x, text_y), fill=255)
-    
-    # Draw spinning circle
-    angles = [0, 45, 90, 135, 180, 225, 270, 315]
-    num_segments = 8
-    active_segment = frame % num_segments
-    
-    import math
-    for i in range(num_segments):
-        angle = math.radians(angles[i])
-        x1 = center_x + int(radius * 0.7 * math.cos(angle))
-        y1 = center_y + int(radius * 0.7 * math.sin(angle))
-        x2 = center_x + int(radius * math.cos(angle))
-        y2 = center_y + int(radius * math.sin(angle))
+    # Draw bitmap animation if frames are loaded
+    if animation_loaded and animation_frames:
+        # Calculate which frame to show (slower animation for smoother effect)
+        current_frame_index = (frame // 2) % len(animation_frames)  # Change frame every 2 cycles
+        current_frame = animation_frames[current_frame_index]
         
-        # Draw line segments with varying brightness
-        if i == active_segment:
-            # Bright segment
-            draw.line([(x1, y1), (x2, y2)], fill=255, width=2)
-        elif abs(i - active_segment) <= 2 or abs(i - active_segment) >= 6:
-            # Dimmer trailing segments
-            draw.point((x2, y2), fill=255)
+        # Center the animation perfectly on the 128x64 display
+        frame_width, frame_height = current_frame.size
+        center_x = (WIDTH - frame_width) // 2   # Center horizontally on 128px width
+        center_y = (HEIGHT - frame_height) // 2  # Center vertically on 64px height
+        
+        # Draw the frame pixel by pixel
+        frame_pixels = list(current_frame.getdata())
+        
+        for y in range(frame_height):
+            for x in range(frame_width):
+                pixel_index = y * frame_width + x
+                if pixel_index < len(frame_pixels):
+                    # If pixel is white/on (1), draw it on the display
+                    if frame_pixels[pixel_index]:
+                        draw_x = center_x + x
+                        draw_y = center_y + y
+                        if 0 <= draw_x < WIDTH and 0 <= draw_y < HEIGHT:
+                            draw.point((draw_x, draw_y), fill=255)
+    
+    else:
+        # Fallback to original spinning circle if bitmap loading failed
+        center_x = WIDTH // 2
+        center_y = HEIGHT // 2
+        radius = 20  # Make fallback circle bigger too
+        
+        # Draw spinning circle
+        angles = [0, 45, 90, 135, 180, 225, 270, 315]
+        num_segments = 8
+        active_segment = frame % num_segments
+        
+        import math
+        for i in range(num_segments):
+            angle = math.radians(angles[i])
+            x1 = center_x + int(radius * 0.7 * math.cos(angle))
+            y1 = center_y + int(radius * 0.7 * math.sin(angle))
+            x2 = center_x + int(radius * math.cos(angle))
+            y2 = center_y + int(radius * math.sin(angle))
+            
+            # Draw line segments with varying brightness
+            if i == active_segment:
+                # Bright segment
+                draw.line([(x1, y1), (x2, y2)], fill=255, width=3)
+            elif abs(i - active_segment) <= 2 or abs(i - active_segment) >= 6:
+                # Dimmer trailing segments
+                draw.point((x2, y2), fill=255)
 
 def draw_result_display(draw, result):
     """Draw the calculation result"""
@@ -358,16 +438,39 @@ def check_buttons():
                 
                 print(f"Calculate button pressed! Computing {left_number} + {right_number}")
                 
-                # Switch to loading state
+                # Switch to loading state first
                 current_display_state = DISPLAY_LOADING
                 
                 # Wait for button release
                 while GPIO.input(CALC_BUTTON_PIN) == GPIO.LOW:
                     time.sleep(0.01)
                 
-                # Perform calculation using external calculator module
+                # Force display update to show loading animation
+                display_equation()
+                
+                # Perform calculation using external calculator module (this includes delay)
                 if validate_inputs(left_number, right_number):
-                    current_result = calculate_sum(left_number, right_number)
+                    # Show loading animation during calculation
+                    start_time = time.time()
+                    calculation_done = False
+                    
+                    # Start calculation in background (simulate with the delay from calculator module)
+                    import threading
+                    def do_calculation():
+                        nonlocal calculation_done
+                        global current_result
+                        current_result = calculate_sum(left_number, right_number)
+                        calculation_done = True
+                    
+                    calc_thread = threading.Thread(target=do_calculation)
+                    calc_thread.start()
+                    
+                    # Show loading animation while calculation is running
+                    while not calculation_done:
+                        display_equation()  # This will show the loading animation
+                        time.sleep(0.05)  # Smooth animation
+                    
+                    calc_thread.join()
                     
                     # Switch to result display (stays until GPIO 26 pressed again)
                     current_display_state = DISPLAY_RESULT
