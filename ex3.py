@@ -4,8 +4,8 @@ import time
 from rpi_ws281x import *
 
 # GPIO Configuration
-BUTTON_A_PIN = 26  # GPIO 26 for input A
-BUTTON_B_PIN = 20  # GPIO 20 for input B
+BUTTON_A_PIN = 17  # GPIO 17 for input A
+BUTTON_B_PIN = 4  # GPIO 4 for input B
 
 # LED Strip Configuration
 LED_COUNT      = 60      # Number of LEDs in your strip
@@ -132,8 +132,8 @@ def main():
     """Main loop to monitor buttons and execute Toffoli gate."""
     
     print("\n=== Instructions ===")
-    print("1. Press and hold button A (GPIO 26) for input A = 1")
-    print("2. Press and hold button B (GPIO 20) for input B = 1") 
+    print("1. Press and hold button A (GPIO 17) for input A = 1")
+    print("2. Press and hold button B (GPIO 4) for input B = 1") 
     print("3. Press both buttons simultaneously to see A AND B = 1")
     print("4. Press Ctrl+C to exit")
     print("\nTruth Table:")
