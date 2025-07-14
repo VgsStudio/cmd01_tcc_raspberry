@@ -3,11 +3,15 @@ import board
 import busio
 import threading
 import os
+import warnings
 from PIL import Image, ImageDraw
 import adafruit_ssd1306
 import RPi.GPIO as GPIO
 from rpi_ws281x import *
 from calculator import calculate_sum, format_result, validate_inputs
+
+# Suppress I2C frequency warning
+warnings.filterwarnings("ignore", message="I2C frequency is not settable in python, ignoring!")
 
 # I2C pins for OLED
 # Based on valid I2C ports: ((1, 3, 2), (0, 1, 0))
@@ -684,6 +688,8 @@ def main():
         print("  - Run: sudo i2cdetect -y 1")
         print("  - Check if SSD1306 OLED is detected")
         print("  - Check button wiring to GPIO 17, GPIO 4, and GPIO 26")
+        print("  - Check LED strip wiring to GPIO 18")
+        print("\n💬 Note: 'I2C frequency not settable' warnings are normal and harmless")
         
     finally:
         # Stop LED patterns and clear strip
