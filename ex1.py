@@ -6,6 +6,12 @@ import select
 import threading
 import RPi.GPIO as GPIO
 from rpi_ws281x import *
+import board
+import busio
+import warnings
+from PIL import Image, ImageDraw
+import adafruit_ssd1306
+from digit_display import display_exp_1
 
 # --- Configurações da Fita de LED (ajuste conforme sua fita) ---
 LED_COUNT      = 60      # Número de LEDs na sua fita.
@@ -18,6 +24,18 @@ LED_CHANNEL    = 0       # Mude para '1' para GPIOs 13, 19, 41, 45 ou 53.
 
 # --- Button Configuration ---
 BUTTON_PIN     = 26      # GPIO 26 for button input
+
+# --- OLED Display Configuration ---
+# Suppress I2C frequency warning
+warnings.filterwarnings("ignore", message="I2C frequency is not settable in python, ignoring!")
+
+# I2C pins for OLED (SCL=GPIO3, SDA=GPIO2)
+i2c = busio.I2C(scl=board.D3, sda=board.D2)
+
+# 128x64 OLED display
+WIDTH = 128
+HEIGHT = 64
+display = adafruit_ssd1306.SSD1306_I2C(WIDTH, HEIGHT, i2c)
 
 # --- Probability Configuration ---
 BLUE_PROBABILITY = 50    # Percentage chance for blue (1)
@@ -34,6 +52,32 @@ def clear_strip(strip):
         strip.setPixelColor(i, Color(0, 0, 0))
     strip.show()
     time.sleep(0.5)
+
+def show_exp_1_display():
+    """Display 'EXP. 1' on the OLED screen"""
+    try:
+        # Create image and draw object
+        image = Image.new("1", (WIDTH, HEIGHT))
+        draw = ImageDraw.Draw(image)
+        
+        # Display "EXP. 1" centered on screen
+        display_exp_1(draw, center_x=WIDTH//2, center_y=HEIGHT//2, size=4)
+        
+        # Update display
+        display.image(image)
+        display.show()
+        print("✅ 'EXP. 1' displayed on OLED")
+        
+    except Exception as e:
+        print(f"⚠️  OLED display error: {e}")
+
+def clear_display():
+    """Clear the OLED display"""
+    try:
+        display.fill(0)
+        display.show()
+    except Exception as e:
+        print(f"⚠️  OLED clear error: {e}")
 
 def light_color(strip, color, binary_value):
     """Lights up the entire strip with a specific color."""
@@ -130,10 +174,32 @@ if __name__ == '__main__':
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
     
+    # Initialize LED strip
     strip = Adafruit_NeoPixel(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL)
     strip.begin()
 
-    print('=== LED Color Lottery System ===')
+    print('=== EXP. 1 - LED Color Lottery System ===')
+    print('🔌 Wiring Instructions:')
+    print('  OLED GND → Pi GND (Pin 6)')
+    print('  OLED VCC → Pi 3.3V (Pin 1)')
+    print('  OLED SCL → Pi GPIO 3 (Pin 5)')
+    print('  OLED SDA → Pi GPIO 2 (Pin 3)')
+    print('  Button → Pi GPIO 26 (Pin 37) + GND')
+    print('  LED Strip → Pi GPIO 18 (Pin 12) + 5V + GND')
+    print()
+    
+    # Initialize and show OLED display
+    try:
+        display.fill(0)
+        display.show()
+        show_exp_1_display()
+        print("✅ OLED display initialized successfully!")
+    except Exception as e:
+        print(f"⚠️  OLED initialization failed: {e}")
+        print("  - Check OLED wiring")
+        print("  - Enable I2C: sudo raspi-config")
+        print("  - Run: sudo i2cdetect -y 1")
+    
     print(f'Blue Probability (1): {BLUE_PROBABILITY}%')
     print(f'Red Probability (0): {RED_PROBABILITY}%')
     print('Starting running alternation mode...')
@@ -179,5 +245,8 @@ if __name__ == '__main__':
     finally:
         # Ensure LEDs are always turned off at the end
         clear_strip(strip)
+        # Clear OLED display
+        clear_display()
+        print("✅ Displays cleared")
         # Clean up GPIO
         GPIO.cleanup()

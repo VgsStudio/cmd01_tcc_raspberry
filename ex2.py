@@ -9,7 +9,7 @@ import adafruit_ssd1306
 import RPi.GPIO as GPIO
 from rpi_ws281x import *
 from calculator import calculate_sum, format_result, validate_inputs
-from digit_display import draw_large_digit, draw_plus_sign
+from digit_display import draw_large_digit, draw_plus_sign, display_exp_2
 
 # Suppress I2C frequency warning
 warnings.filterwarnings("ignore", message="I2C frequency is not settable in python, ignoring!")
@@ -488,6 +488,24 @@ def setup_buttons():
     GPIO.setup(RIGHT_BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
     GPIO.setup(CALC_BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
+def show_exp_2_display():
+    """Display 'EXP. 2' on the OLED screen"""
+    try:
+        # Create image and draw object
+        image = Image.new("1", (WIDTH, HEIGHT))
+        draw = ImageDraw.Draw(image)
+        
+        # Display "EXP. 2" centered on screen
+        display_exp_2(draw, center_x=WIDTH//2, center_y=HEIGHT//2, size=4)
+        
+        # Update display
+        display.image(image)
+        display.show()
+        print("✅ 'EXP. 2' displayed on OLED")
+        
+    except Exception as e:
+        print(f"⚠️  OLED display error: {e}")
+
 def number_display():
     print("🔢 Starting NUMBER + NUMBER display...")
     print("📟 Large, bold digit display with calculator")
@@ -508,7 +526,7 @@ def number_display():
         time.sleep(0.033)  # ~30 FPS (1/30 = 0.033 seconds)
 
 def main():
-    print("=== OLED Number Display with Calculator ===")
+    print("=== EXP. 2 - OLED Number Display with Calculator ===")
     print("Raspberry Pi 3 Model B - I2C OLED")
     print("🔢 Large Bold Number + Number Display")
     print("🧮 Three Button Calculator System")
@@ -543,10 +561,20 @@ def main():
         setup_buttons()
         print("✅ Buttons setup complete!")
         
-        # Initialize display
+        # Initialize display and show EXP. 2 for 3 seconds
         display.fill(0)
         display.show()
         print("✅ Display initialized successfully!")
+        
+        # Show "EXP. 2" for 3 seconds
+        show_exp_2_display()
+        print("📺 Showing 'EXP. 2' for 3 seconds...")
+        time.sleep(3)
+        
+        # Clear display and start calculator
+        display.fill(0)
+        display.show()
+        print("🧮 Starting calculator interface...")
         
         number_display()
         

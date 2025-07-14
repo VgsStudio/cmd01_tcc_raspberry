@@ -2,6 +2,12 @@ from qiskit import QuantumCircuit, Aer, execute
 import RPi.GPIO as GPIO
 import time
 from rpi_ws281x import *
+import board
+import busio
+import warnings
+from PIL import Image, ImageDraw
+import adafruit_ssd1306
+from digit_display import display_exp_3
 
 # GPIO Configuration
 BUTTON_A_PIN = 17  # GPIO 17 for input A
@@ -16,6 +22,18 @@ LED_BRIGHTNESS = 200     # Brightness from 0 to 255
 LED_INVERT     = False   # Change to True if signal needs to be inverted
 LED_CHANNEL    = 0       # Change to '1' for GPIOs 13, 19, 41, 45 or 53
 
+# OLED Display Configuration
+# Suppress I2C frequency warning
+warnings.filterwarnings("ignore", message="I2C frequency is not settable in python, ignoring!")
+
+# I2C pins for OLED (SCL=GPIO3, SDA=GPIO2)
+i2c = busio.I2C(scl=board.D3, sda=board.D2)
+
+# 128x64 OLED display
+WIDTH = 128
+HEIGHT = 64
+display = adafruit_ssd1306.SSD1306_I2C(WIDTH, HEIGHT, i2c)
+
 # Initialize GPIO
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(BUTTON_A_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -25,8 +43,16 @@ GPIO.setup(BUTTON_B_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 strip = Adafruit_NeoPixel(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL)
 strip.begin()
 
-print("=== Raspberry Pi Quantum AND Gate with LED Strip ===")
+print("=== EXP. 3 - Raspberry Pi Quantum AND Gate with LED Strip ===")
 print("Using physical buttons to control Toffoli gate inputs")
+print("\n🔌 Wiring Instructions:")
+print("  OLED GND → Pi GND (Pin 6)")
+print("  OLED VCC → Pi 3.3V (Pin 1)")
+print("  OLED SCL → Pi GPIO 3 (Pin 5)")
+print("  OLED SDA → Pi GPIO 2 (Pin 3)")
+print("  Button A → Pi GPIO 17 (Pin 11) + GND")
+print("  Button B → Pi GPIO 4 (Pin 7) + GND")
+print("  LED Strip → Pi GPIO 18 (Pin 12) + 5V + GND")
 print("\nGPIO Configuration:")
 print(f"- Button A (Input A): GPIO {BUTTON_A_PIN}")
 print(f"- Button B (Input B): GPIO {BUTTON_B_PIN}")
@@ -47,6 +73,32 @@ def clear_strip():
     for i in range(strip.numPixels()):
         strip.setPixelColor(i, Color(0, 0, 0))
     strip.show()
+
+def show_exp_3_display():
+    """Display 'EXP. 3' on the OLED screen"""
+    try:
+        # Create image and draw object
+        image = Image.new("1", (WIDTH, HEIGHT))
+        draw = ImageDraw.Draw(image)
+        
+        # Display "EXP. 3" centered on screen
+        display_exp_3(draw, center_x=WIDTH//2, center_y=HEIGHT//2, size=4)
+        
+        # Update display
+        display.image(image)
+        display.show()
+        print("✅ 'EXP. 3' displayed on OLED")
+        
+    except Exception as e:
+        print(f"⚠️  OLED display error: {e}")
+
+def clear_display():
+    """Clear the OLED display"""
+    try:
+        display.fill(0)
+        display.show()
+    except Exception as e:
+        print(f"⚠️  OLED clear error: {e}")
 
 def display_result_on_leds(binary_value):
     """Display the result on LED strip: Red for 0, Blue for 1."""
@@ -131,6 +183,20 @@ def run_quantum_circuit(circuit):
 def main():
     """Main loop to monitor buttons and execute Toffoli gate."""
     
+    # Initialize and show OLED display
+    try:
+        display.fill(0)
+        display.show()
+        show_exp_3_display()
+        print("✅ OLED display initialized successfully!")
+        print("📺 Showing 'EXP. 3'")
+        
+    except Exception as e:
+        print(f"⚠️  OLED initialization failed: {e}")
+        print("  - Check OLED wiring")
+        print("  - Enable I2C: sudo raspi-config")
+        print("  - Run: sudo i2cdetect -y 1")
+    
     print("\n=== Instructions ===")
     print("1. Press and hold button A (GPIO 17) for input A = 1")
     print("2. Press and hold button B (GPIO 4) for input B = 1") 
@@ -195,10 +261,13 @@ def main():
         print("\n\nExiting...")
     
     finally:
-        # Clear LED strip and clean up GPIO
+        # Clear LED strip and OLED display
         clear_strip()
+        clear_display()
+        print("✅ Displays cleared")
+        # Clean up GPIO
         GPIO.cleanup()
-        print("LED strip cleared and GPIO cleanup completed.")
+        print("🧹 GPIO cleanup completed.")
 
 if __name__ == '__main__':
     main()
