@@ -7,7 +7,7 @@ import busio
 import warnings
 from PIL import Image, ImageDraw
 import adafruit_ssd1306
-from digit_display import display_exp_3
+from digit_display import show_exp_x_display
 
 # GPIO Configuration
 BUTTON_A_PIN = 17  # GPIO 17 for input A
@@ -74,23 +74,7 @@ def clear_strip():
         strip.setPixelColor(i, Color(0, 0, 0))
     strip.show()
 
-def show_exp_3_display():
-    """Display 'EXP. 3' on the OLED screen"""
-    try:
-        # Create image and draw object
-        image = Image.new("1", (WIDTH, HEIGHT))
-        draw = ImageDraw.Draw(image)
-        
-        # Display "EXP. 3" centered on screen
-        display_exp_3(draw, center_x=WIDTH//2, center_y=HEIGHT//2, size=4)
-        
-        # Update display
-        display.image(image)
-        display.show()
-        print("✅ 'EXP. 3' displayed on OLED")
-        
-    except Exception as e:
-        print(f"⚠️  OLED display error: {e}")
+
 
 def clear_display():
     """Clear the OLED display"""
@@ -187,9 +171,8 @@ def main():
     try:
         display.fill(0)
         display.show()
-        show_exp_3_display()
+        show_exp_x_display(display, 3, WIDTH, HEIGHT)
         print("✅ OLED display initialized successfully!")
-        print("📺 Showing 'EXP. 3'")
         
     except Exception as e:
         print(f"⚠️  OLED initialization failed: {e}")

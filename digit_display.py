@@ -187,158 +187,83 @@ def draw_dot(draw, x, y, size=6):
     # Draw a small square for the dot
     draw.rectangle([x, y, x + thick, y + thick], fill=255)
 
-def display_exp_1(draw, center_x=64, center_y=32, size=2):
+def show_exp_x_display(display, exp_number, width=128, height=64, size=4, duration=None):
     """
-    Display "EXP. 1" centered on the screen
+    Generic function to display 'EXP. X' on the OLED screen for specified duration
     
     Args:
-        draw: PIL ImageDraw object
-        center_x (int): Center X position (default 64 for 128px wide display)
-        center_y (int): Center Y position (default 32 for 64px high display)
+        display: OLED display object
+        exp_number (int): Experiment number (1, 2, 3, etc.)
+        width (int): Display width in pixels (default 128)
+        height (int): Display height in pixels (default 64)
         size (int): Size multiplier for the text (default 2)
+        duration (int): Duration to show in seconds (default 3)
     """
-    # Clear the display first
-    draw.rectangle([0, 0, 128, 64], fill=0)
-    
-    # Calculate dimensions
-    letter_width = size * 3
-    letter_height = size * 5
-    digit_width = size * 4
-    spacing = size * 2
-    dot_width = size
-    
-    # Calculate total width: E + X + P + . + (space) + 1
-    total_width = letter_width + spacing + letter_width + spacing + letter_width + spacing + dot_width + spacing + spacing + digit_width
-    
-    # Calculate starting X position to center the text
-    start_x = center_x - total_width // 2
-    start_y = center_y - letter_height // 2
-    
-    # Draw each character
-    current_x = start_x
-    
-    # Draw "E"
-    draw_letter_e(draw, current_x, start_y, size)
-    current_x += letter_width + spacing
-    
-    # Draw "X"
-    draw_letter_x(draw, current_x, start_y, size)
-    current_x += letter_width + spacing
-    
-    # Draw "P"
-    draw_letter_p(draw, current_x, start_y, size)
-    current_x += letter_width + spacing
-    
-    # Draw "."
-    draw_dot(draw, current_x, start_y + letter_height - size, size)
-    current_x += dot_width + spacing
-    
-    # Add extra space before the number
-    current_x += spacing
-    
-    # Draw "1"
-    draw_large_digit(draw, 1, current_x, start_y - (size * 6 - letter_height) // 2, size)
-
-def display_exp_2(draw, center_x=64, center_y=32, size=2):
-    """
-    Display "EXP. 2" centered on the screen
-    
-    Args:
-        draw: PIL ImageDraw object
-        center_x (int): Center X position (default 64 for 128px wide display)
-        center_y (int): Center Y position (default 32 for 64px high display)
-        size (int): Size multiplier for the text (default 2)
-    """
-    # Clear the display first
-    draw.rectangle([0, 0, 128, 64], fill=0)
-    
-    # Calculate dimensions
-    letter_width = size * 3
-    letter_height = size * 5
-    digit_width = size * 4
-    spacing = size * 2
-    dot_width = size
-    
-    # Calculate total width: E + X + P + . + (space) + 2
-    total_width = letter_width + spacing + letter_width + spacing + letter_width + spacing + dot_width + spacing + spacing + digit_width
-    
-    # Calculate starting X position to center the text
-    start_x = center_x - total_width // 2
-    start_y = center_y - letter_height // 2
-    
-    # Draw each character
-    current_x = start_x
-    
-    # Draw "E"
-    draw_letter_e(draw, current_x, start_y, size)
-    current_x += letter_width + spacing
-    
-    # Draw "X"
-    draw_letter_x(draw, current_x, start_y, size)
-    current_x += letter_width + spacing
-    
-    # Draw "P"
-    draw_letter_p(draw, current_x, start_y, size)
-    current_x += letter_width + spacing
-    
-    # Draw "."
-    draw_dot(draw, current_x, start_y + letter_height - size, size)
-    current_x += dot_width + spacing
-    
-    # Add extra space before the number
-    current_x += spacing
-    
-    # Draw "2"
-    draw_large_digit(draw, 2, current_x, start_y - (size * 6 - letter_height) // 2, size)
-
-def display_exp_3(draw, center_x=64, center_y=32, size=2):
-    """
-    Display "EXP. 3" centered on the screen
-    
-    Args:
-        draw: PIL ImageDraw object
-        center_x (int): Center X position (default 64 for 128px wide display)
-        center_y (int): Center Y position (default 32 for 64px high display)
-        size (int): Size multiplier for the text (default 2)
-    """
-    # Clear the display first
-    draw.rectangle([0, 0, 128, 64], fill=0)
-    
-    # Calculate dimensions
-    letter_width = size * 3
-    letter_height = size * 5
-    digit_width = size * 4
-    spacing = size * 2
-    dot_width = size
-    
-    # Calculate total width: E + X + P + . + (space) + 3
-    total_width = letter_width + spacing + letter_width + spacing + letter_width + spacing + dot_width + spacing + spacing + digit_width
-    
-    # Calculate starting X position to center the text
-    start_x = center_x - total_width // 2
-    start_y = center_y - letter_height // 2
-    
-    # Draw each character
-    current_x = start_x
-    
-    # Draw "E"
-    draw_letter_e(draw, current_x, start_y, size)
-    current_x += letter_width + spacing
-    
-    # Draw "X"
-    draw_letter_x(draw, current_x, start_y, size)
-    current_x += letter_width + spacing
-    
-    # Draw "P"
-    draw_letter_p(draw, current_x, start_y, size)
-    current_x += letter_width + spacing
-    
-    # Draw "."
-    draw_dot(draw, current_x, start_y + letter_height - size, size)
-    current_x += dot_width + spacing
-    
-    # Add extra space before the number
-    current_x += spacing
-    
-    # Draw "3"
-    draw_large_digit(draw, 3, current_x, start_y - (size * 6 - letter_height) // 2, size)
+    try:
+        from PIL import Image, ImageDraw
+        import time
+        
+        # Create image and draw object
+        image = Image.new("1", (width, height))
+        draw = ImageDraw.Draw(image)
+        
+        # Clear the display first
+        draw.rectangle([0, 0, width, height], fill=0)
+        
+        # Calculate dimensions
+        letter_width = size * 3
+        letter_height = size * 5
+        digit_width = size * 4
+        spacing = size * 2
+        dot_width = size
+        
+        # Calculate total width: E + X + P + . + (space) + digit
+        total_width = letter_width + spacing + letter_width + spacing + letter_width + spacing + dot_width + spacing + spacing + digit_width
+        
+        # Calculate starting position to center the text
+        start_x = (width // 2) - (total_width // 2)
+        start_y = (height // 2) - (letter_height // 2)
+        
+        # Draw each character
+        current_x = start_x
+        
+        # Draw "E"
+        draw_letter_e(draw, current_x, start_y, size)
+        current_x += letter_width + spacing
+        
+        # Draw "X"
+        draw_letter_x(draw, current_x, start_y, size)
+        current_x += letter_width + spacing
+        
+        # Draw "P"
+        draw_letter_p(draw, current_x, start_y, size)
+        current_x += letter_width + spacing
+        
+        # Draw "."
+        draw_dot(draw, current_x, start_y + letter_height - size, size)
+        current_x += dot_width + spacing
+        
+        # Add extra space before the number
+        current_x += spacing
+        
+        # Draw the experiment number
+        draw_large_digit(draw, exp_number, current_x, start_y - (size * 6 - letter_height) // 2, size)
+        
+        # Update display
+        display.image(image)
+        display.show()
+        print(f"✅ 'EXP. {exp_number}' displayed on OLED")
+        
+        # Show for specified duration
+        if duration != None:
+            print(f"📺 Showing 'EXP. {exp_number}' for {duration} seconds...")
+            time.sleep(duration)
+        
+            # Clear display after showing experiment identifier
+            display.fill(0)
+            display.show()
+        print(f"🔬 Starting experiment {exp_number}...")
+        
+    except Exception as e:
+        print(f"⚠️  OLED display error: {e}")
+        print("  - Check OLED wiring and I2C configuration")

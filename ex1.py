@@ -11,7 +11,7 @@ import busio
 import warnings
 from PIL import Image, ImageDraw
 import adafruit_ssd1306
-from digit_display import display_exp_1
+from digit_display import show_exp_x_display
 
 # --- Configurações da Fita de LED (ajuste conforme sua fita) ---
 LED_COUNT      = 60      # Número de LEDs na sua fita.
@@ -52,24 +52,6 @@ def clear_strip(strip):
         strip.setPixelColor(i, Color(0, 0, 0))
     strip.show()
     time.sleep(0.5)
-
-def show_exp_1_display():
-    """Display 'EXP. 1' on the OLED screen"""
-    try:
-        # Create image and draw object
-        image = Image.new("1", (WIDTH, HEIGHT))
-        draw = ImageDraw.Draw(image)
-        
-        # Display "EXP. 1" centered on screen
-        display_exp_1(draw, center_x=WIDTH//2, center_y=HEIGHT//2, size=4)
-        
-        # Update display
-        display.image(image)
-        display.show()
-        print("✅ 'EXP. 1' displayed on OLED")
-        
-    except Exception as e:
-        print(f"⚠️  OLED display error: {e}")
 
 def clear_display():
     """Clear the OLED display"""
@@ -192,7 +174,7 @@ if __name__ == '__main__':
     try:
         display.fill(0)
         display.show()
-        show_exp_1_display()
+        show_exp_x_display(display, 1, WIDTH, HEIGHT)  # Shows EXP. 1 for 3 seconds and clears
         print("✅ OLED display initialized successfully!")
     except Exception as e:
         print(f"⚠️  OLED initialization failed: {e}")
