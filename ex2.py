@@ -8,7 +8,7 @@ from PIL import Image, ImageDraw
 import adafruit_ssd1306
 import RPi.GPIO as GPIO
 from rpi_ws281x import *
-from calculator import calculate_sum, format_result, validate_inputs
+from calculator_quantum import calculate_sum, format_result, validate_inputs
 from digit_display import draw_large_digit, draw_plus_sign, show_exp_x_display
 
 # Suppress I2C frequency warning
