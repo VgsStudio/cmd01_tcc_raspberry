@@ -10,6 +10,7 @@ import os
 import time
 import signal
 import threading
+import RPi.GPIO as GPIO
 
 class ExperimentController:
     def __init__(self):
@@ -18,15 +19,65 @@ class ExperimentController:
         self.script_dir = os.path.dirname(os.path.abspath(__file__))
         self.shutdown_event = threading.Event()
         
+        # GPIO button configuration
+        self.TOGGLE_BUTTON_PIN = 16  # GPIO 16 for experiment toggle
+        self.last_button_time = 0    # For button debouncing
+        
+        # Setup GPIO
+        self._setup_gpio()
+        
         # Set up signal handlers for proper cleanup
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
+        
+        # Start GPIO monitoring thread
+        self.gpio_thread = threading.Thread(target=self._monitor_gpio)
+        self.gpio_thread.daemon = True
+        self.gpio_thread.start()
+        
+    def _setup_gpio(self):
+        """Setup GPIO button for experiment toggle."""
+        try:
+            GPIO.setmode(GPIO.BCM)
+            GPIO.setup(self.TOGGLE_BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+            print(f"✅ GPIO {self.TOGGLE_BUTTON_PIN} setup for experiment toggle")
+        except Exception as e:
+            print(f"⚠️  Failed to setup GPIO: {e}")
+            
+    def _monitor_gpio(self):
+        """Monitor GPIO button for experiment toggle."""
+        while not self.shutdown_event.is_set():
+            try:
+                if GPIO.input(self.TOGGLE_BUTTON_PIN) == GPIO.LOW:
+                    current_time = time.time()
+                    # Debounce: ignore button presses within 0.5 seconds
+                    if current_time - self.last_button_time > 0.5:
+                        self.last_button_time = current_time
+                        print("\n🔘 GPIO 16 button pressed! Toggling experiment...")
+                        self.toggle_experiment()
+                        self.show_status()
+                        
+                        # Wait for button release to avoid multiple triggers
+                        while GPIO.input(self.TOGGLE_BUTTON_PIN) == GPIO.LOW:
+                            time.sleep(0.01)
+                            
+                time.sleep(0.05)  # Check button every 50ms
+                
+            except Exception as e:
+                if not self.shutdown_event.is_set():
+                    print(f"⚠️  GPIO monitoring error: {e}")
+                break
         
     def _signal_handler(self, signum, frame):
         """Handle signals for proper cleanup."""
         print(f"\n🛑 Received signal {signum}, initiating graceful shutdown...")
         self.shutdown_event.set()
         self._graceful_shutdown()
+        try:
+            GPIO.cleanup()
+            print("🧹 GPIO cleanup completed")
+        except:
+            pass
         sys.exit(0)
         
     def _graceful_shutdown(self):
@@ -101,6 +152,20 @@ try:
     # Clean up GPIO
     GPIO.cleanup()
     
+    # Try to cleanup OLED display (for ex2.py)
+    try:
+        import board
+        import busio
+        import adafruit_ssd1306
+        from PIL import Image, ImageDraw
+        
+        i2c = busio.I2C(scl=board.D3, sda=board.D2)
+        display = adafruit_ssd1306.SSD1306_I2C(128, 64, i2c)
+        display.fill(0)
+        display.show()
+    except:
+        pass  # OLED cleanup is optional
+    
     print("✅ Emergency cleanup completed")
     
 except Exception as e:
@@ -121,6 +186,7 @@ except Exception as e:
         """Start an experiment with proper monitoring."""
         experiments = {
             1: ('ex1.py', 'LED Color Lottery System'),
+            2: ('ex2.py', 'OLED Calculator with LED Strip'),
             3: ('ex3.py', 'Quantum Toffoli Gate')
         }
         
@@ -174,14 +240,14 @@ except Exception as e:
             return False
             
     def toggle_experiment(self):
-        """Toggle between experiments with graceful shutdown."""
-        print("\n🔄 Toggling experiments...")
+        """Cycle through experiments with graceful shutdown."""
+        print("\n🔄 Cycling through experiments...")
         
         # Gracefully shutdown current experiment
         self._graceful_shutdown()
         
-        # Switch to the other experiment
-        self.current_experiment = 3 if self.current_experiment == 1 else 1
+        # Cycle to the next experiment (1 -> 2 -> 3 -> 1)
+        self.current_experiment = (self.current_experiment % 3) + 1
         
         # Small delay to ensure cleanup is complete
         time.sleep(1)
@@ -194,13 +260,19 @@ except Exception as e:
             
     def show_status(self):
         """Show current status."""
-        exp_names = {1: "ex1.py (LED Lottery)", 3: "ex3.py (Quantum Toffoli)"}
+        exp_names = {
+            1: "ex1.py (LED Lottery)", 
+            2: "ex2.py (OLED Calculator)",
+            3: "ex3.py (Quantum Toffoli)"
+        }
         status = "Running" if self.process and self.process.poll() is None else "Stopped"
         
         print(f"\n📊 Status: {status}")
         print(f"🔄 Current: Experiment {self.current_experiment} - {exp_names[self.current_experiment]}")
         print("\n🎮 Commands:")
-        print("  v + ENTER = Toggle experiments")
+        print("  v + ENTER = Cycle through experiments")
+        print("  GPIO 16 = Hardware button to cycle experiments")
+        print("  1/2/3 + ENTER = Switch to specific experiment")
         print("  s + ENTER = Show status")
         print("  r + ENTER = Restart current experiment")
         print("  q + ENTER = Quit")
@@ -222,11 +294,17 @@ except Exception as e:
         print("  1️⃣  ex1.py - LED Color Lottery")
         print("      🎰 Random lottery system with GPIO 26 button")
         print("      🔴🔵 Alternating colors until button press")
+        print("  2️⃣  ex2.py - OLED Calculator with LED Strip")
+        print("      🖥️  128x64 OLED display with calculator")
+        print("      🎮 GPIO 17 & 4 for numbers, GPIO 26 for calculate")
+        print("      🔴🔵 LED animations during calculation")
         print("  3️⃣  ex3.py - Quantum Toffoli Gate")
         print("      ⚛️  Quantum AND gate with GPIO 17 & 4 buttons")
         print("      🔴🔵 Shows quantum computation results")
         print("\n🎮 Commands:")
-        print("  v = Toggle between experiments")
+        print("  v = Cycle through experiments (1→2→3→1)")
+        print("  GPIO 16 = Hardware button to cycle experiments")
+        print("  1/2/3 = Switch directly to specific experiment")
         print("  s = Show current status")
         print("  r = Restart current experiment")
         print("  q = Quit with graceful shutdown")
@@ -236,6 +314,12 @@ except Exception as e:
         print("  • GPIO cleanup prevents resource conflicts")
         print("  • Proper signal handling for clean exits")
         print("  • Emergency cleanup as failsafe")
+        print("  • OLED display cleanup for ex2.py")
+        print("  • Hardware toggle button on GPIO 16")
+        print("\n🔌 Hardware Setup:")
+        print("  • Connect button between GPIO 16 and GND")
+        print("  • Button press cycles through experiments")
+        print("  • Internal pull-up resistor enabled")
         
     def run(self):
         """Main controller loop."""
@@ -256,6 +340,18 @@ except Exception as e:
                     
                     if command == 'v':
                         self.toggle_experiment()
+                        self.show_status()
+                        
+                    elif command in ['1', '2', '3']:
+                        target_exp = int(command)
+                        if target_exp != self.current_experiment:
+                            self._graceful_shutdown()
+                            time.sleep(1)
+                            self.current_experiment = target_exp
+                            if self.start_experiment(self.current_experiment):
+                                print(f"✅ Switched to Experiment {self.current_experiment}")
+                            else:
+                                print("❌ Failed to start experiment")
                         self.show_status()
                         
                     elif command == 's':
@@ -287,7 +383,13 @@ except Exception as e:
             
         finally:
             print("\n🔄 Performing final graceful shutdown...")
+            self.shutdown_event.set()
             self._graceful_shutdown()
+            try:
+                GPIO.cleanup()
+                print("🧹 GPIO cleanup completed")
+            except:
+                pass
             print("✅ Goodbye!")
 
 if __name__ == '__main__':
