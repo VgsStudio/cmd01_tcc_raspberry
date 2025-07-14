@@ -147,6 +147,27 @@ def create_half_adder(input_a, input_b):
 
     return qc
 
+def create_full_adder(input_a, input_b, carry_in):
+    """Create full adder by composing half adder and OR gate subcircuits."""
+    # Create the main 7-qubit circuit
+    qc = QuantumCircuit(7)
+    
+    print(f"\nCreating full adder using subcircuits with inputs: A={int(input_a)}, B={int(input_b)}, Carry In={int(carry_in)}")
+
+    # Set input states
+    if carry_in:
+        qc.x(2)
+
+    # Create first half adder for sum
+    half_adder1 = create_half_adder(input_a, input_b)
+    qc.compose(half_adder1, [0, 1, 3, 4], inplace=True)  # Map outputs to qubits 3 (output) and 4 (carry)
+
+    # Create second half adder for final sum with carry in
+    half_adder2 = create_half_adder(0, carry_in)
+    qc.compose(half_adder2, [3, 2, 5, 6], inplace=True)  # Map outputs to qubits 5 (final sum) and 6 (final carry)
+
+    return qc
+
 def add_barriers_and_measure(circuit):
     """Add barriers and measurements to a quantum circuit."""
     circuit.barrier()
@@ -212,5 +233,24 @@ if __name__ == "__main__":
     counts = run_quantum_circuit(qc4)
     result = max(counts, key=counts.get)
     print(f"Result of HALF ADDER gate: {result}")
+
+    # Test full adder
+
+    qc5 = create_full_adder(1, 1, 0)
+    qc5 = add_barriers_and_measure(qc5)
+    print(qc5.draw())
+    
+    counts = run_quantum_circuit(qc5)
+    result = max(counts, key=counts.get)
+    print(f"Result of FULL ADDER gate: {result}")
+
+    # Test full adder with carry in
+    qc6 = create_full_adder(1, 1, 1)
+    qc6 = add_barriers_and_measure(qc6)
+    print(qc6.draw())
+
+    counts = run_quantum_circuit(qc6)
+    result = max(counts, key=counts.get)
+    print(f"Result of FULL ADDER with carry in: {result}")
 
    
