@@ -538,6 +538,18 @@ def main():
     print("\nInitializing display and buttons...")
     
     try:
+        # Initialize display and show EXP. 2 for 3 seconds
+        display.fill(0)
+        display.show()
+        print("✅ Display initialized successfully!")
+
+        # Show "EXP. 2" for 3 seconds
+        show_exp_x_display(display, 2, WIDTH, HEIGHT, duration=3)
+        
+        # Clear display and start calculator
+        display.fill(0)
+        display.show()
+
         # Setup LED strip
         setup_led_strip()
         
@@ -545,17 +557,6 @@ def main():
         setup_buttons()
         print("✅ Buttons setup complete!")
         
-        # Initialize display and show EXP. 2 for 3 seconds
-        display.fill(0)
-        display.show()
-        print("✅ Display initialized successfully!")
-        
-        # Show "EXP. 2" for 3 seconds
-        show_exp_x_display(display, 2, WIDTH, HEIGHT, duration=3)
-        
-        # Clear display and start calculator
-        display.fill(0)
-        display.show()
         print("🧮 Starting calculator interface...")
         
         number_display()
