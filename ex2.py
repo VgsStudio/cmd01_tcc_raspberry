@@ -35,7 +35,7 @@ LED_CHANNEL    = 0       # LED channel
 
 # Button Configuration
 LEFT_BUTTON_PIN = 17   # GPIO 17 for left number
-RIGHT_BUTTON_PIN = 4   # GPIO 4 for right number
+RIGHT_BUTTON_PIN = 27   # GPIO 27 for right number
 CALC_BUTTON_PIN = 26   # GPIO 26 for calculate button
 
 # Counter variables
@@ -404,7 +404,7 @@ def check_buttons():
             while GPIO.input(LEFT_BUTTON_PIN) == GPIO.LOW:
                 time.sleep(0.01)
     
-    # Check right button (GPIO 4) - works only in equation mode
+    # Check right button (GPIO 27) - works only in equation mode
     if current_display_state == DISPLAY_EQUATION and GPIO.input(RIGHT_BUTTON_PIN) == GPIO.LOW:
         # Debounce: ignore button presses within 0.1 seconds
         if current_time - last_right_button_time > 0.1:
@@ -494,7 +494,7 @@ def number_display():
     print("🔢 Starting NUMBER + NUMBER display...")
     print("📟 Large, bold digit display with calculator")
     print("🔘 Press left button (GPIO 17) to change left number")
-    print("🔘 Press right button (GPIO 4) to change right number")
+    print("🔘 Press right button (GPIO 27) to change right number")
     print("🧮 Press calculate button (GPIO 26) to compute sum")
     print("🧮 Press calculate button (GPIO 26) again to return to equation")
     print("Press Ctrl+C to stop")
@@ -520,7 +520,7 @@ def main():
     print("  OLED SCL → Pi GPIO 3 (Pin 5)")
     print("  OLED SDA → Pi GPIO 2 (Pin 3)")
     print("  Left Button → Pi GPIO 17 (Pin 11) + GND")
-    print("  Right Button → Pi GPIO 4 (Pin 7) + GND")
+    print("  Right Button → Pi GPIO 27 (Pin 13) + GND")
     print("  Calculate Button → Pi GPIO 26 (Pin 37) + GND")
     print("  LED Strip → Pi GPIO 18 (Pin 12) + 5V + GND")
     print("\n🛠️  Make sure I2C is enabled!")
@@ -576,7 +576,7 @@ def main():
         print("  - Reboot after enabling I2C")
         print("  - Run: sudo i2cdetect -y 1")
         print("  - Check if SSD1306 OLED is detected")
-        print("  - Check button wiring to GPIO 17, GPIO 4, and GPIO 26")
+        print("  - Check button wiring to GPIO 17, GPIO 27, and GPIO 26")
         print("  - Check LED strip wiring to GPIO 18")
         print("\n💬 Note: 'I2C frequency not settable' warnings are normal and harmless")
         

@@ -1,5 +1,8 @@
 from qiskit import QuantumCircuit, Aer, execute
-import RPi.GPIO as GPIO
+import print("GPIO Configuration:")
+print(f"- Button A (Input A): GPIO {BUTTON_A_PIN}")
+print(f"- Button B (Input B): GPIO {BUTTON_B_PIN}")
+print("- Both buttons have pull-up resistors (pressed = LOW)")GPIO as GPIO
 import time
 from rpi_ws281x import *
 import board
@@ -11,7 +14,7 @@ from digit_display import show_exp_x_display
 
 # GPIO Configuration
 BUTTON_A_PIN = 17  # GPIO 17 for input A
-BUTTON_B_PIN = 4  # GPIO 4 for input B
+BUTTON_B_PIN = 27  # GPIO 27 for input B
 
 # LED Strip Configuration
 LED_COUNT      = 60      # Number of LEDs in your strip
@@ -51,7 +54,7 @@ print("  OLED VCC → Pi 3.3V (Pin 1)")
 print("  OLED SCL → Pi GPIO 3 (Pin 5)")
 print("  OLED SDA → Pi GPIO 2 (Pin 3)")
 print("  Button A → Pi GPIO 17 (Pin 11) + GND")
-print("  Button B → Pi GPIO 4 (Pin 7) + GND")
+print("  Button B → Pi GPIO 27 (Pin 13) + GND")
 print("  LED Strip → Pi GPIO 18 (Pin 12) + 5V + GND")
 print("\nGPIO Configuration:")
 print(f"- Button A (Input A): GPIO {BUTTON_A_PIN}")
@@ -182,7 +185,7 @@ def main():
     
     print("\n=== Instructions ===")
     print("1. Press and hold button A (GPIO 17) for input A = 1")
-    print("2. Press and hold button B (GPIO 4) for input B = 1") 
+    print("2. Press and hold button B (GPIO 27) for input B = 1") 
     print("3. Press both buttons simultaneously to see A AND B = 1")
     print("4. Press Ctrl+C to exit")
     print("\nTruth Table:")
