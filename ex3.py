@@ -1,8 +1,5 @@
 from qiskit import QuantumCircuit, Aer, execute
-import print("GPIO Configuration:")
-print(f"- Button A (Input A): GPIO {BUTTON_A_PIN}")
-print(f"- Button B (Input B): GPIO {BUTTON_B_PIN}")
-print("- Both buttons have pull-up resistors (pressed = LOW)")GPIO as GPIO
+import RPi.GPIO as GPIO
 import time
 from rpi_ws281x import *
 import board
