@@ -115,6 +115,47 @@ def mixed_alternating_colors_thread():
         for i in range(led_strip.numPixels()):
             led_colors[i] = 1 - led_colors[i]  # Toggle between 0 and 1
 
+def equation_oscillation_thread():
+    """LED oscillation pattern for equation mode - sweeps red to blue across the strip."""
+    global led_pattern_active, led_strip
+    
+    if led_strip is None:
+        return
+    
+    import math
+    wave_position = 0.0  # Current position of the wave
+    
+    while led_pattern_active:
+        # Clear all LEDs first
+        for i in range(led_strip.numPixels()):
+            led_strip.setPixelColor(i, Color(0, 0, 0))
+        
+        # Create oscillating wave that moves from side to side
+        for i in range(led_strip.numPixels()):
+            # Calculate position relative to wave (0 to 1)
+            normalized_pos = i / float(led_strip.numPixels() - 1)
+            
+            # Create a sine wave that moves across the strip
+            wave_value = math.sin(wave_position + normalized_pos * math.pi * 2)
+            
+            # Map wave value (-1 to 1) to color intensity (0 to 255)
+            if wave_value > 0:
+                # Positive wave = Red intensity
+                red_intensity = int(wave_value * 255)
+                led_strip.setPixelColor(i, Color(red_intensity, 0, 0))
+            else:
+                # Negative wave = Blue intensity
+                blue_intensity = int(-wave_value * 255)
+                led_strip.setPixelColor(i, Color(0, 0, blue_intensity))
+        
+        led_strip.show()
+        time.sleep(0.05)  # Smooth animation at 20 FPS
+        
+        # Move the wave position
+        wave_position += 0.2  # Speed of oscillation
+        if wave_position > math.pi * 4:  # Reset after full cycle
+            wave_position = 0.0
+
 def start_led_alternating_pattern():
     """Start the LED alternating pattern in a background thread."""
     global led_pattern_active, led_thread
@@ -127,6 +168,21 @@ def start_led_alternating_pattern():
     
     led_pattern_active = True
     led_thread = threading.Thread(target=mixed_alternating_colors_thread)
+    led_thread.daemon = True
+    led_thread.start()
+
+def start_equation_oscillation():
+    """Start the LED oscillation pattern for equation mode."""
+    global led_pattern_active, led_thread
+    
+    if led_strip is None:
+        return
+        
+    # Stop any existing pattern
+    stop_led_pattern()
+    
+    led_pattern_active = True
+    led_thread = threading.Thread(target=equation_oscillation_thread)
     led_thread.daemon = True
     led_thread.start()
 
@@ -335,9 +391,9 @@ def display_equation():
     draw = ImageDraw.Draw(image)
     
     if current_display_state == DISPLAY_EQUATION:
-        # Turn off LEDs when showing numbers/equation
-        stop_led_pattern()
-        clear_led_strip()
+        # Show oscillating red-blue wave during equation mode
+        if not led_pattern_active:
+            start_equation_oscillation()
         
         # Calculate numbers from counters (0-9 cycle)
         left_number = left_counter % 10
@@ -532,7 +588,7 @@ def main():
     print(f"  Calculator: GPIO 26 shows loading then result")
     print(f"  Style: Large, bold digits")
     print(f"\n💡 LED Strip Behavior:")
-    print(f"  Equation Mode: LEDs OFF")
+    print(f"  Equation Mode: Red-Blue oscillating wave")
     print(f"  Calculating: Red/Blue alternating pattern")
     print(f"  Result Mode: Solid BLUE")
     print("\nInitializing display and buttons...")
