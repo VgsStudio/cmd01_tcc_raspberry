@@ -4,6 +4,8 @@ import random
 import sys
 import select
 import threading
+import os
+import math
 import RPi.GPIO as GPIO
 from rpi_ws281x import *
 import board
@@ -12,6 +14,8 @@ import warnings
 from PIL import Image, ImageDraw
 import adafruit_ssd1306
 from digit_display import show_exp_x_display
+from qiskit import QuantumCircuit, execute, Aer
+from qiskit.circuit.library import HGate
 
 # --- Configurações da Fita de LED (ajuste conforme sua fita) ---
 LED_COUNT      = 60      # Número de LEDs na sua fita.
@@ -40,6 +44,12 @@ display = adafruit_ssd1306.SSD1306_I2C(WIDTH, HEIGHT, i2c)
 # --- Probability Configuration ---
 BLUE_PROBABILITY = 50    # Percentage chance for blue (1)
 RED_PROBABILITY = 100 - BLUE_PROBABILITY   # Percentage chance for red (0)
+
+# --- Animation settings ---
+SPRITE_SIZE = (64, 64)  # Size of each animation frame
+FRAMES = 30  # Number of frames in the animation
+animation_frames = []  # Will store loaded animation frames
+animation_loaded = False
 
 # --- Global Variables ---
 alternating = True       # Controls the alternating pattern
@@ -122,13 +132,262 @@ def restart_alternation():
     global alternating
     alternating = True
 
-def lottery_color():
-    """Draws a color based on configured probability."""
-    random_num = random.randint(1, 100)
-    if random_num <= BLUE_PROBABILITY:
-        return Color(0, 0, 255), 1  # Blue = 1
+def load_animation_frames():
+    """Load animation frames from sprite sheet bitmap - optimized for faster startup"""
+    global animation_frames, animation_loaded
+    
+    if animation_loaded:
+        return
+    
+    try:
+        # Load the sprite sheet bitmap
+        sprite_path = "./icons/atom.bmp"
+        if os.path.exists(sprite_path):
+            sprite_sheet = Image.open(sprite_path)
+            
+            # Convert to 1-bit (monochrome) if not already
+            if sprite_sheet.mode != '1':
+                sprite_sheet = sprite_sheet.convert('1')
+            
+            # Extract individual frames from the sprite sheet
+            frame_width = SPRITE_SIZE[0]
+            frame_height = SPRITE_SIZE[1]
+            
+            # Calculate how many frames we can actually extract from the sprite sheet
+            available_frames = min(FRAMES, sprite_sheet.size[0] // frame_width)
+            
+            # Pre-calculate display size once
+            display_size = int(HEIGHT * 0.95)  # Make it 95% of display height (about 51 pixels)
+            
+            for i in range(available_frames):
+                # Calculate frame position in sprite sheet
+                x = i * frame_width
+                y = 0
+                
+                # Extract frame
+                frame_box = (x, y, x + frame_width, y + frame_height)
+                frame = sprite_sheet.crop(frame_box)
+                
+                # Make the atom bigger - resize to take up more of the display
+                frame = frame.resize((display_size, display_size), Image.NEAREST)
+                
+                animation_frames.append(frame)
+            
+            # If we have fewer frames than requested, duplicate frames to reach 30
+            if len(animation_frames) < FRAMES and len(animation_frames) > 0:
+                original_frames = animation_frames.copy()
+                while len(animation_frames) < FRAMES:
+                    # Add frames by cycling through original frames
+                    frame_to_add = original_frames[len(animation_frames) % len(original_frames)]
+                    animation_frames.append(frame_to_add)
+            
+            animation_loaded = True
+            print(f"✅ Loaded {len(animation_frames)} animation frames (requested {FRAMES})")
+            
+        else:
+            print(f"⚠️  Animation file not found: {sprite_path}")
+            animation_loaded = False
+            
+    except Exception as e:
+        print(f"❌ Error loading animation: {e}")
+        animation_loaded = False
+
+def draw_quantum_spinner(draw, frame):
+    """Draw a bitmap-based quantum atom animation during measurement"""
+    global animation_frames, animation_loaded
+    
+    # Load animation frames only when first needed (lazy loading for faster startup)
+    if not animation_loaded:
+        load_animation_frames()
+    
+    # Clear the display
+    draw.rectangle([0, 0, WIDTH, HEIGHT], fill=0)
+    
+    # Draw "EXP. 1" text at the top
+    text = "EXP. 1"
+    # Calculate text position (centered at top)
+    text_width = len(text) * 6  # Approximate character width
+    text_x = (WIDTH - text_width) // 2
+    text_y = 5
+    draw.text((text_x, text_y), text, fill=255)
+    
+    # Draw bitmap animation if frames are loaded
+    if animation_loaded and animation_frames:
+        # Calculate which frame to show (fast animation for 30 FPS effect)
+        current_frame_index = frame % len(animation_frames)  # Change frame every cycle for max speed
+        current_frame = animation_frames[current_frame_index]
+        
+        # Center the animation below the text
+        frame_width, frame_height = current_frame.size
+        center_x = (WIDTH - frame_width) // 2   # Center horizontally on 128px width
+        center_y = ((HEIGHT - frame_height) // 2) + 10  # Center vertically but shifted down for text
+        
+        # Draw the frame pixel by pixel
+        frame_pixels = list(current_frame.getdata())
+        
+        for y in range(frame_height):
+            for x in range(frame_width):
+                pixel_index = y * frame_width + x
+                if pixel_index < len(frame_pixels):
+                    # If pixel is white/on (1), draw it on the display
+                    if frame_pixels[pixel_index]:
+                        draw_x = center_x + x
+                        draw_y = center_y + y
+                        if 0 <= draw_x < WIDTH and 0 <= draw_y < HEIGHT:
+                            draw.point((draw_x, draw_y), fill=255)
+    
     else:
-        return Color(255, 0, 0), 0  # Red
+        # Fallback to original spinning circle if bitmap loading failed
+        center_x = WIDTH // 2
+        center_y = (HEIGHT // 2) + 10  # Shifted down to make room for text
+        radius = 15  # Smaller radius to fit with text
+        
+        # Draw spinning circle
+        angles = [0, 45, 90, 135, 180, 225, 270, 315]
+        num_segments = 8
+        active_segment = frame % num_segments
+        
+        for i in range(num_segments):
+            angle = math.radians(angles[i])
+            x1 = center_x + int(radius * 0.7 * math.cos(angle))
+            y1 = center_y + int(radius * 0.7 * math.sin(angle))
+            x2 = center_x + int(radius * math.cos(angle))
+            y2 = center_y + int(radius * math.sin(angle))
+            
+            # Draw line segments with varying brightness
+            if i == active_segment:
+                # Bright segment
+                draw.line([(x1, y1), (x2, y2)], fill=255, width=2)
+            elif abs(i - active_segment) <= 2 or abs(i - active_segment) >= 6:
+                # Dimmer trailing segments
+                draw.point((x2, y2), fill=255)
+
+def show_quantum_result(result_value):
+    """Show the quantum measurement result on OLED display"""
+    try:
+        image = Image.new("1", (WIDTH, HEIGHT))
+        draw = ImageDraw.Draw(image)
+        
+        # Clear the display
+        draw.rectangle([0, 0, WIDTH, HEIGHT], fill=0)
+        
+        # Draw "EXP. 1" at the top
+        exp_text = "EXP. 1"
+        exp_width = len(exp_text) * 6
+        exp_x = (WIDTH - exp_width) // 2
+        draw.text((exp_x, 5), exp_text, fill=255)
+        
+        # Draw "QUANTUM RESULT:" in the middle
+        result_text = "QUANTUM RESULT:"
+        result_width = len(result_text) * 6
+        result_x = (WIDTH - result_width) // 2
+        draw.text((result_x, 25), result_text, fill=255)
+        
+        # Draw the binary result (0 or 1) large
+        binary_text = str(result_value)
+        binary_width = len(binary_text) * 12  # Larger font approximation
+        binary_x = (WIDTH - binary_width) // 2
+        # Draw larger number by drawing multiple times with offset
+        for offset_x in range(2):
+            for offset_y in range(2):
+                draw.text((binary_x + offset_x, 40 + offset_y), binary_text, fill=255)
+        
+        # Draw color description
+        color_text = "BLUE" if result_value == 1 else "RED"
+        color_width = len(color_text) * 6
+        color_x = (WIDTH - color_width) // 2
+        draw.text((color_x, 55), color_text, fill=255)
+        
+        # Update display
+        display.image(image)
+        display.show()
+        
+        
+    except Exception as e:
+        print(f"⚠️  OLED result display error: {e}")
+
+def quantum_measurement_with_animation():
+    """Performs quantum measurement with spinning atom animation only during quantum execution."""
+    try:
+        print("🔬 Performing quantum measurement...")
+        
+        # Create a quantum circuit with 1 qubit and 1 classical bit
+        qc = QuantumCircuit(1, 1)
+        
+        # Apply Hadamard gate to create superposition (50/50 chance)
+        qc.h(0)
+        
+        # Measure the qubit
+        qc.measure(0, 0)
+        
+        # Start animation in a separate thread while quantum execution happens
+        animation_active = True
+        animation_frame = 0
+        
+        def animate_while_executing():
+            nonlocal animation_active, animation_frame
+            image = Image.new("1", (WIDTH, HEIGHT))
+            draw = ImageDraw.Draw(image)
+            
+            while animation_active:
+                # Clear and draw current frame
+                draw_quantum_spinner(draw, animation_frame)
+                
+                # Update display
+                display.image(image)
+                display.show()
+                
+                # Next frame
+                animation_frame += 1
+                
+                # Control frame rate (30 FPS)
+                time.sleep(1.0 / 30)
+        
+        # Start animation thread
+        animation_thread = threading.Thread(target=animate_while_executing)
+        animation_thread.daemon = True
+        animation_thread.start()
+        
+        # Execute the quantum circuit (this is where the delay happens)
+        backend = Aer.get_backend('qasm_simulator')
+        job = execute(qc, backend, shots=1)
+        result = job.result()
+        counts = result.get_counts(qc)
+        
+        # Stop animation immediately after quantum execution completes
+        animation_active = False
+        animation_thread.join(timeout=0.1)  # Wait briefly for thread to finish
+        
+        # Get the measurement result (0 or 1)
+        quantum_result = int(list(counts.keys())[0])
+        
+        print(f"🔬 Quantum measurement: {quantum_result}")
+        
+        # Show quantum result on OLED display
+        show_quantum_result(quantum_result)
+        
+        if quantum_result == 1:
+            return Color(0, 0, 255), 1  # Blue = 1
+        else:
+            return Color(255, 0, 0), 0  # Red = 0
+            
+    except Exception as e:
+        print(f"⚠️  Quantum circuit error: {e}")
+        print("Falling back to classical random...")
+        
+        # Make sure animation stops in case of error
+        animation_active = False
+        
+        # Clear display in case of error
+        display.fill(0)
+        display.show()
+        
+        # Fallback to classical random if quantum fails
+        random_num = random.randint(0, 1)
+        if random_num == 1:
+            return Color(0, 0, 255), 1  # Blue = 1
+        else:
+            return Color(255, 0, 0), 0  # Red = 0
 
 def check_for_button():
     """Checks for button press in a non-blocking way."""
@@ -174,7 +433,7 @@ if __name__ == '__main__':
     try:
         display.fill(0)
         display.show()
-        show_exp_x_display(display, 1, WIDTH, HEIGHT)  # Shows EXP. 1 for 3 seconds and clears
+        show_exp_x_display(display, 1, WIDTH, HEIGHT)  # Shows EXP. 1
         print("✅ OLED display initialized successfully!")
     except Exception as e:
         print(f"⚠️  OLED initialization failed: {e}")
@@ -182,13 +441,14 @@ if __name__ == '__main__':
         print("  - Enable I2C: sudo raspi-config")
         print("  - Run: sudo i2cdetect -y 1")
     
-    print(f'Blue Probability (1): {BLUE_PROBABILITY}%')
-    print(f'Red Probability (0): {RED_PROBABILITY}%')
+    print(f'🔬 Quantum 50/50 Probability using Hadamard Gate')
+    print(f'Blue (1): 50% | Red (0): 50%')
     print('Starting running alternation mode...')
-    print('Press the button (GPIO 26) to enter lottery mode...')
+    print('Press the button (GPIO 26) to enter quantum lottery mode...')
     
     try:
         while True:
+            show_exp_x_display(display, 1, WIDTH, HEIGHT)  # Shows EXP. 1 
             # Reset alternating state
             restart_alternation()
             
@@ -200,11 +460,11 @@ if __name__ == '__main__':
             # Start mixed alternating colors (each LED alternates individually)
             mixed_alternating_colors(strip)
             
-            # After alternating stops, enter lottery mode immediately
-            print("\n=== Lottery Mode ===")
+            # After alternating stops, enter quantum lottery mode immediately
+            print("\n=== Quantum Lottery Mode ===")
             
-            # Draw a color
-            color, binary_value = lottery_color()
+            # Draw a color using quantum Hadamard gate with spinning atom animation
+            color, binary_value = quantum_measurement_with_animation()
             
             # Light up the strip with the drawn color
             light_color(strip, color, binary_value)
