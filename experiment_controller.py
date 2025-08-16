@@ -22,6 +22,7 @@ class ExperimentController:
         # GPIO button configuration
         self.TOGGLE_BUTTON_PIN = 16  # GPIO 16 for experiment toggle
         self.last_button_time = 0    # For button debouncing
+        self.HOLD_DURATION = 5.0     # Seconds to hold button to exit (5 seconds)
         
         # Setup GPIO
         self._setup_gpio()
@@ -45,22 +46,54 @@ class ExperimentController:
             print(f"⚠️  Failed to setup GPIO: {e}")
             
     def _monitor_gpio(self):
-        """Monitor GPIO button for experiment toggle."""
+        """Monitor GPIO button for experiment toggle and hold-to-exit."""
         while not self.shutdown_event.is_set():
             try:
                 if GPIO.input(self.TOGGLE_BUTTON_PIN) == GPIO.LOW:
+                    button_press_start = time.time()
                     current_time = time.time()
+                    
                     # Debounce: ignore button presses within 0.5 seconds
                     if current_time - self.last_button_time > 0.5:
-                        self.last_button_time = current_time
-                        print("\n🔘 GPIO 16 button pressed! Toggling experiment...")
-                        self.toggle_experiment()
-                        self.show_status()
+                        print(f"\n🔘 GPIO 16 button pressed...")
                         
-                        # Wait for button release to avoid multiple triggers
-                        while GPIO.input(self.TOGGLE_BUTTON_PIN) == GPIO.LOW:
-                            time.sleep(0.01)
+                        # Monitor how long the button is held
+                        hold_time = 0
+                        while GPIO.input(self.TOGGLE_BUTTON_PIN) == GPIO.LOW and not self.shutdown_event.is_set():
+                            hold_time = time.time() - button_press_start
                             
+                            # Show progress for long hold
+                            if hold_time >= 2.0:
+                                remaining = self.HOLD_DURATION - hold_time
+                                if remaining > 0:
+                                    print(f"🔒 Hold for {remaining:.1f}s more to exit...", end='\r')
+                                else:
+                                    print(f"\n� Button held for {self.HOLD_DURATION}s - Exiting experiment controller! 💖")
+                                    self.shutdown_event.set()
+                                    # Trigger graceful shutdown and exit
+                                    self._graceful_shutdown()
+                                    try:
+                                        GPIO.cleanup()
+                                        print("🧹 GPIO cleanup completed")
+                                    except:
+                                        pass
+                                    print("✅ Goodbye! 💖")
+                                    os._exit(0)  # Force exit from all threads
+                            
+                            time.sleep(0.1)
+                        
+                        # Clear the progress line
+                        if hold_time >= 2.0:
+                            print(" " * 50, end='\r')  # Clear the progress line
+                        
+                        self.last_button_time = time.time()
+                        
+                        # If button was released before hold duration, toggle experiment
+                        if hold_time < self.HOLD_DURATION and not self.shutdown_event.is_set():
+                            print("🔄 Button released - Toggling experiment...")
+                            self.toggle_experiment()
+                            self.show_status()
+                        
                 time.sleep(0.05)  # Check button every 50ms
                 
             except Exception as e:
@@ -271,7 +304,7 @@ except Exception as e:
         print(f"🔄 Current: Experiment {self.current_experiment} - {exp_names[self.current_experiment]}")
         print("\n🎮 Commands:")
         print("  v + ENTER = Cycle through experiments")
-        print("  GPIO 16 = Hardware button to cycle experiments")
+        print("  GPIO 16 = Hardware button (short press = toggle, hold 5s = exit)")
         print("  1/2/3 + ENTER = Switch to specific experiment")
         print("  s + ENTER = Show status")
         print("  r + ENTER = Restart current experiment")
@@ -303,7 +336,7 @@ except Exception as e:
         print("      🔴🔵 Shows quantum computation results")
         print("\n🎮 Commands:")
         print("  v = Cycle through experiments (1→2→3→1)")
-        print("  GPIO 16 = Hardware button to cycle experiments")
+        print("  GPIO 16 = Hardware button (short press = toggle, hold 5s = exit)")
         print("  1/2/3 = Switch directly to specific experiment")
         print("  s = Show current status")
         print("  r = Restart current experiment")
@@ -316,9 +349,11 @@ except Exception as e:
         print("  • Emergency cleanup as failsafe")
         print("  • OLED display cleanup for ex2.py")
         print("  • Hardware toggle button on GPIO 16")
+        print("  • Hold button for 5 seconds to exit controller")
         print("\n🔌 Hardware Setup:")
         print("  • Connect button between GPIO 16 and GND")
-        print("  • Button press cycles through experiments")
+        print("  • Short press = cycle experiments")
+        print("  • Hold 5 seconds = exit controller")
         print("  • Internal pull-up resistor enabled")
         
     def run(self):
