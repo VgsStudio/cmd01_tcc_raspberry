@@ -218,7 +218,7 @@ except Exception as e:
     def start_experiment(self, exp_num):
         """Start an experiment with proper monitoring."""
         experiments = {
-            1: ('experiments/ex1.py', 'LED Color Lottery System'),
+            1: ('experiments/ex1.py', 'LED Quantum Hadamard System'),
             2: ('experiments/ex2.py', 'OLED Calculator with LED Strip'),
             3: ('experiments/ex3.py', 'Quantum Toffoli Gate')
         }
@@ -294,7 +294,7 @@ except Exception as e:
     def show_status(self):
         """Show current status."""
         exp_names = {
-            1: "ex1.py (LED Lottery)", 
+            1: "ex1.py (LED Quantum Hadamard)", 
             2: "ex2.py (OLED Calculator)",
             3: "ex3.py (Quantum Toffoli)"
         }
@@ -324,8 +324,8 @@ except Exception as e:
     def show_help(self):
         """Show help information."""
         print("\n📋 Available Experiments:")
-        print("  1️⃣  ex1.py - LED Color Lottery")
-        print("      🎰 Random lottery system with GPIO 26 button")
+        print("  1️⃣  ex1.py - LED Quantum Hadamard")
+        print("      ⚛️ Quantum random system with GPIO 26 button")
         print("      🔴🔵 Alternating colors until button press")
         print("  2️⃣  ex2.py - OLED Calculator with LED Strip")
         print("      🖥️  128x64 OLED display with calculator")

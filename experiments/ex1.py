@@ -98,7 +98,7 @@ def alternate_colors(strip):
     """Continuously alternates between red and blue."""
     global alternating, current_color
     
-    print("Starting color alternation... Press the button (GPIO 26) to stop and enter lottery mode.")
+    print("Starting color alternation... Press the button (GPIO 26) to stop and enter quantum hadamard mode.")
     
     while alternating:
         draw_color(strip, current_color)
@@ -109,7 +109,7 @@ def mixed_alternating_colors(strip):
     """Different LEDs alternate in different orders creating a mixed pattern."""
     global alternating
     
-    print("Starting mixed alternation... Press the button (GPIO 26) to stop and enter lottery mode.")
+    print("Starting mixed alternation... Press the button (GPIO 26) to stop and enter quantum hadamard mode.")
     
     # Create different starting colors for each LED
     led_colors = []
@@ -424,7 +424,7 @@ if __name__ == '__main__':
     strip = Adafruit_NeoPixel(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL)
     strip.begin()
 
-    print('=== EXP. 1 - LED Color Lottery System ===')
+    print('=== EXP. 1 - LED Quantum Hadamard System ===')
     print('🔌 Wiring Instructions:')
     print('  OLED GND → Pi GND (Pin 6)')
     print('  OLED VCC → Pi 3.3V (Pin 1)')
@@ -449,7 +449,7 @@ if __name__ == '__main__':
     print(f'🔬 Quantum 50/50 Probability using Hadamard Gate')
     print(f'Blue (1): 50% | Red (0): 50%')
     print('Starting running alternation mode...')
-    print('Press the button (GPIO 26) to enter quantum lottery mode...')
+    print('Press the button (GPIO 26) to enter quantum hadamard mode...')
     
     try:
         while True:
@@ -465,8 +465,8 @@ if __name__ == '__main__':
             # Start mixed alternating colors (each LED alternates individually)
             mixed_alternating_colors(strip)
             
-            # After alternating stops, enter quantum lottery mode immediately
-            print("\n=== Quantum Lottery Mode ===")
+            # After alternating stops, enter quantum hadamard mode immediately
+            print("\n=== Quantum Hadamard Mode ===")
             
             # Draw a color using quantum Hadamard gate with spinning atom animation
             color, binary_value = quantum_measurement_with_animation()

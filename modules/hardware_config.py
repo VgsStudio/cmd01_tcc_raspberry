@@ -42,8 +42,8 @@ OLED_CONFIG = {
 # Experiment-specific configurations
 EXPERIMENT_CONFIG = {
     1: {
-        'name': 'LED Color Lottery System',
-        'description': 'Quantum random lottery with LED visualization',
+        'name': 'LED Quantum Hadamard System',
+        'description': 'Quantum random hadamard with LED visualization',
         'buttons': ['BUTTON_CALC'],
         'hardware': ['LED_STRIP', 'I2C']
     },
