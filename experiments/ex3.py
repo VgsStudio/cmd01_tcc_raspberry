@@ -1,37 +1,44 @@
 from qiskit import QuantumCircuit, Aer, execute
 import RPi.GPIO as GPIO
 import time
+import os
+import sys
 from rpi_ws281x import *
 import board
 import busio
 import warnings
 from PIL import Image, ImageDraw
 import adafruit_ssd1306
-from digit_display import show_exp_x_display
 
-# GPIO Configuration
-BUTTON_A_PIN = 17  # GPIO 17 for input A
-BUTTON_B_PIN = 27  # GPIO 27 for input B
+# Add parent directory to path for module imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-# LED Strip Configuration
-LED_COUNT      = 60      # Number of LEDs in your strip
-LED_PIN        = 18      # GPIO 18. DO NOT CHANGE.
-LED_FREQ_HZ    = 800000  # LED signal frequency (usually 800khz)
-LED_DMA        = 10      # DMA channel
-LED_BRIGHTNESS = 200     # Brightness from 0 to 255
-LED_INVERT     = False   # Change to True if signal needs to be inverted
-LED_CHANNEL    = 0       # Change to '1' for GPIOs 13, 19, 41, 45 or 53
+from modules.digit_display import show_exp_x_display
+from modules.hardware_config import PINS, LED_CONFIG, OLED_CONFIG
 
-# OLED Display Configuration
+# GPIO Configuration (from centralized config)
+BUTTON_A_PIN = PINS['BUTTON_LEFT']   # GPIO 17 for input A
+BUTTON_B_PIN = PINS['BUTTON_RIGHT']  # GPIO 27 for input B
+
+# LED Strip Configuration (from centralized config)
+LED_COUNT      = LED_CONFIG['COUNT']
+LED_PIN        = LED_CONFIG['PIN']
+LED_FREQ_HZ    = LED_CONFIG['FREQ_HZ']
+LED_DMA        = LED_CONFIG['DMA']
+LED_BRIGHTNESS = LED_CONFIG['BRIGHTNESS']
+LED_INVERT     = LED_CONFIG['INVERT']
+LED_CHANNEL    = LED_CONFIG['CHANNEL']
+
+# OLED Display Configuration (from centralized config)
 # Suppress I2C frequency warning
 warnings.filterwarnings("ignore", message="I2C frequency is not settable in python, ignoring!")
 
-# I2C pins for OLED (SCL=GPIO3, SDA=GPIO2)
+# I2C pins for OLED (using centralized config)
 i2c = busio.I2C(scl=board.D3, sda=board.D2)
 
-# 128x64 OLED display
-WIDTH = 128
-HEIGHT = 64
+# OLED display dimensions (from centralized config)
+WIDTH = OLED_CONFIG['WIDTH']
+HEIGHT = OLED_CONFIG['HEIGHT']
 display = adafruit_ssd1306.SSD1306_I2C(WIDTH, HEIGHT, i2c)
 
 # Initialize GPIO

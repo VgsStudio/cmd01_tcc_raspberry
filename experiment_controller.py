@@ -218,9 +218,9 @@ except Exception as e:
     def start_experiment(self, exp_num):
         """Start an experiment with proper monitoring."""
         experiments = {
-            1: ('ex1.py', 'LED Color Lottery System'),
-            2: ('ex2.py', 'OLED Calculator with LED Strip'),
-            3: ('ex3.py', 'Quantum Toffoli Gate')
+            1: ('experiments/ex1.py', 'LED Color Lottery System'),
+            2: ('experiments/ex2.py', 'OLED Calculator with LED Strip'),
+            3: ('experiments/ex3.py', 'Quantum Toffoli Gate')
         }
         
         if exp_num not in experiments:

@@ -3,40 +3,44 @@ import board
 import busio
 import threading
 import os
+import sys
 import warnings
 from PIL import Image, ImageDraw
 import adafruit_ssd1306
 import RPi.GPIO as GPIO
 from rpi_ws281x import *
-from calculator_quantum import calculate_sum, format_result, validate_inputs
-from digit_display import draw_large_digit, draw_plus_sign, show_exp_x_display
+
+# Add parent directory to path for module imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+from modules.calculator_quantum import calculate_sum, format_result, validate_inputs
+from modules.digit_display import draw_large_digit, draw_plus_sign, show_exp_x_display
+from modules.hardware_config import PINS, LED_CONFIG, OLED_CONFIG, ANIMATION_CONFIG, TIMING_CONFIG
 
 # Suppress I2C frequency warning
 warnings.filterwarnings("ignore", message="I2C frequency is not settable in python, ignoring!")
 
-# I2C pins for OLED
-# Based on valid I2C ports: ((1, 3, 2), (0, 1, 0))
-# Using first valid port: SCL=GPIO3, SDA=GPIO2
+# I2C pins for OLED (from centralized config)
 # Connect your OLED as follows:
-# OLED SCK pin → Raspberry Pi GPIO 1 (Physical pin 28)
-# OLED SDA pin → Raspberry Pi GPIO 3 (Physical pin 5)
+# OLED SCK pin → Raspberry Pi GPIO 3 (Physical pin 5)
+# OLED SDA pin → Raspberry Pi GPIO 2 (Physical pin 3)
 # OLED VCC → 3.3V or 5V
 # OLED GND → Ground
 i2c = busio.I2C(scl=board.D3, sda=board.D2)
 
-# LED Strip Configuration
-LED_COUNT      = 60      # Number of LEDs in the strip
-LED_PIN        = 18      # GPIO 18 for LED strip
-LED_FREQ_HZ    = 800000  # LED signal frequency (usually 800khz)
-LED_DMA        = 10      # DMA channel
-LED_BRIGHTNESS = 200     # Brightness from 0 to 255
-LED_INVERT     = False   # Set to True if signal needs to be inverted
-LED_CHANNEL    = 0       # LED channel
+# LED Strip Configuration (from centralized config)
+LED_COUNT      = LED_CONFIG['COUNT']
+LED_PIN        = LED_CONFIG['PIN']
+LED_FREQ_HZ    = LED_CONFIG['FREQ_HZ']
+LED_DMA        = LED_CONFIG['DMA']
+LED_BRIGHTNESS = LED_CONFIG['BRIGHTNESS']
+LED_INVERT     = LED_CONFIG['INVERT']
+LED_CHANNEL    = LED_CONFIG['CHANNEL']
 
-# Button Configuration
-LEFT_BUTTON_PIN = 17   # GPIO 17 for left number
-RIGHT_BUTTON_PIN = 27   # GPIO 27 for right number
-CALC_BUTTON_PIN = 26   # GPIO 26 for calculate button
+# Button Configuration (from centralized config)
+LEFT_BUTTON_PIN = PINS['BUTTON_LEFT']    # GPIO 17 for left number
+RIGHT_BUTTON_PIN = PINS['BUTTON_RIGHT']  # GPIO 27 for right number
+CALC_BUTTON_PIN = PINS['BUTTON_CALC']    # GPIO 26 for calculate button
 
 # Counter variables
 left_counter = 0
@@ -53,14 +57,14 @@ current_display_state = DISPLAY_EQUATION
 result_display_time = 0
 current_result = 0
 
-# 128x64 OLED display
-WIDTH = 128
-HEIGHT = 64
+# OLED display configuration (from centralized config)
+WIDTH = OLED_CONFIG['WIDTH']
+HEIGHT = OLED_CONFIG['HEIGHT']
 BORDER = 0
 
-# Animation settings
-SPRITE_SIZE = (64, 64)  # Size of each animation frame
-FRAMES = 30  # Number of frames in the animation
+# Animation settings (from centralized config)
+SPRITE_SIZE = ANIMATION_CONFIG['SPRITE_SIZE']
+FRAMES = ANIMATION_CONFIG['FRAMES']
 animation_frames = []  # Will store loaded animation frames
 animation_loaded = False
 
@@ -218,7 +222,7 @@ def load_animation_frames():
     
     try:
         # Load the sprite sheet bitmap
-        sprite_path = "./icons/atom.bmp"
+        sprite_path = "./assets/icons/atom.bmp"
         if os.path.exists(sprite_path):
             sprite_sheet = Image.open(sprite_path)
             

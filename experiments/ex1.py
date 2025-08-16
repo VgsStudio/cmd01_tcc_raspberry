@@ -13,32 +13,37 @@ import busio
 import warnings
 from PIL import Image, ImageDraw
 import adafruit_ssd1306
-from digit_display import show_exp_x_display
+
+# Add parent directory to path for module imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+from modules.digit_display import show_exp_x_display
+from modules.hardware_config import PINS, LED_CONFIG, OLED_CONFIG, ANIMATION_CONFIG, TIMING_CONFIG
 from qiskit import QuantumCircuit, execute, Aer
 from qiskit.circuit.library import HGate
 
-# --- Configurações da Fita de LED (ajuste conforme sua fita) ---
-LED_COUNT      = 60      # Número de LEDs na sua fita.
-LED_PIN        = 18      # GPIO 18. NÃO MUDE.
-LED_FREQ_HZ    = 800000  # Frequência do sinal (geralmente 800khz).
-LED_DMA        = 10      # Canal DMA.
-LED_BRIGHTNESS = 200      # Brilho de 0 a 255. Cuidado com fontes fracas!
-LED_INVERT     = False   # Mude para True se o sinal precisar ser invertido.
-LED_CHANNEL    = 0       # Mude para '1' para GPIOs 13, 19, 41, 45 ou 53.
+# --- Hardware Configuration (from centralized config) ---
+LED_COUNT      = LED_CONFIG['COUNT']
+LED_PIN        = LED_CONFIG['PIN']
+LED_FREQ_HZ    = LED_CONFIG['FREQ_HZ']
+LED_DMA        = LED_CONFIG['DMA']
+LED_BRIGHTNESS = LED_CONFIG['BRIGHTNESS']
+LED_INVERT     = LED_CONFIG['INVERT']
+LED_CHANNEL    = LED_CONFIG['CHANNEL']
 
-# --- Button Configuration ---
-BUTTON_PIN     = 26      # GPIO 26 for button input
+# --- Button Configuration (from centralized config) ---
+BUTTON_PIN     = PINS['BUTTON_CALC']  # GPIO 26 for button input
 
-# --- OLED Display Configuration ---
+# --- OLED Display Configuration (from centralized config) ---
 # Suppress I2C frequency warning
 warnings.filterwarnings("ignore", message="I2C frequency is not settable in python, ignoring!")
 
-# I2C pins for OLED (SCL=GPIO3, SDA=GPIO2)
+# I2C pins for OLED (using centralized config)
 i2c = busio.I2C(scl=board.D3, sda=board.D2)
 
-# 128x64 OLED display
-WIDTH = 128
-HEIGHT = 64
+# OLED display dimensions
+WIDTH = OLED_CONFIG['WIDTH']
+HEIGHT = OLED_CONFIG['HEIGHT']
 display = adafruit_ssd1306.SSD1306_I2C(WIDTH, HEIGHT, i2c)
 
 # --- Probability Configuration ---
@@ -141,7 +146,7 @@ def load_animation_frames():
     
     try:
         # Load the sprite sheet bitmap
-        sprite_path = "./icons/atom.bmp"
+        sprite_path = "./assets/icons/atom.bmp"
         if os.path.exists(sprite_path):
             sprite_sheet = Image.open(sprite_path)
             
