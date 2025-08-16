@@ -7,17 +7,17 @@
 ```
 cmd01_tcc_raspberry/
 ├── 📁 experiments/           # Core experiment files
-│   ├── ex1.py               # LED Quantum Hadamard System
-│   ├── ex2.py               # OLED Calculator with LED Strip
-│   └── ex3.py               # Quantum Toffoli Gate Demo
+│   ├── exp1.py               # LED Quantum Hadamard System
+│   ├── exp2.py               # OLED Calculator with LED Strip
+│   └── exp3.py               # Quantum Toffoli Gate Demo
 ├── 📁 modules/              # Reusable modules
 │   ├── calculator_quantum.py    # Quantum calculation logic
 │   ├── digit_display.py        # OLED display utilities
 │   └── hardware_config.py      # Centralized hardware settings
 ├── 📁 scripts/              # Utility and runner scripts
-│   ├── run_ex1.sh              # Run experiment 1
-│   ├── run_ex2.sh              # Run experiment 2
-│   ├── run_ex3.sh              # Run experiment 3
+│   ├── run_exp1.sh              # Run experiment 1
+│   ├── run_exp2.sh              # Run experiment 2
+│   ├── run_exp3.sh              # Run experiment 3
 │   ├── setup.sh                # Project setup
 │   ├── activate_venv.sh        # Virtual environment activation
 │   └── cleanup_leds.py         # Emergency LED cleanup
@@ -45,13 +45,13 @@ source scripts/activate_venv.sh
 ### 2. **Run Individual Experiments**
 ```bash
 # Experiment 1: LED Quantum Hadamard
-./scripts/run_ex1.sh
+./scripts/run_exp1.sh
 
 # Experiment 2: OLED Calculator
-./scripts/run_ex2.sh
+./scripts/run_exp2.sh
 
 # Experiment 3: Quantum Toffoli Gate
-./scripts/run_ex3.sh
+./scripts/run_exp3.sh
 ```
 
 ### 3. **Run Experiment Controller**
@@ -66,19 +66,19 @@ python experiment_controller.py
 ## 🧪 Experiments
 
 ### 🎰 **Experiment 1: LED Quantum Hadamard**
-- **File**: `experiments/ex1.py`
+- **File**: `experiments/exp1.py`
 - **Hardware**: 60 LED WS2812B strip, GPIO 26 button, OLED display
 - **Features**: True quantum randomness using Qiskit Hadamard gates
 - **Controls**: Press GPIO 26 to trigger quantum measurement
 
 ### 🧮 **Experiment 2: OLED Calculator**
-- **File**: `experiments/ex2.py`
+- **File**: `experiments/exp2.py`
 - **Hardware**: OLED 128x64, LED strip, 3 buttons (GPIO 17, 27, 26)
 - **Features**: Visual calculator with quantum computation backend
 - **Controls**: GPIO 17/27 for numbers, GPIO 26 for calculation
 
 ### ⚛️ **Experiment 3: Quantum Toffoli Gate**
-- **File**: `experiments/ex3.py`
+- **File**: `experiments/exp3.py`
 - **Hardware**: LED strip, 2 buttons (GPIO 17, 27), OLED display
 - **Features**: Quantum AND gate demonstration
 - **Controls**: GPIO 17/27 for inputs, automatic quantum computation
@@ -89,8 +89,8 @@ All hardware settings are centralized in `modules/hardware_config.py`:
 
 ### **GPIO Pin Assignments**
 - **LED Strip**: GPIO 18
-- **Button Left**: GPIO 17 (ex2, ex3)
-- **Button Right**: GPIO 27 (ex2, ex3)
+- **Button Left**: GPIO 17 (exp2, exp3)
+- **Button Right**: GPIO 27 (exp2, exp3)
 - **Button Calc**: GPIO 26 (all experiments)
 - **Button Toggle**: GPIO 16 (controller)
 - **I2C SCL**: GPIO 3 (OLED)

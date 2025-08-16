@@ -92,7 +92,7 @@ def set_led_strip_color(color):
         led_strip.show()
 
 def mixed_alternating_colors_thread():
-    """LED alternating pattern similar to ex1.py - runs in background thread."""
+    """LED alternating pattern similar to exp1.py - runs in background thread."""
     global led_pattern_active, led_strip
     
     if led_strip is None:

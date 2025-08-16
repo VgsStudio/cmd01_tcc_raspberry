@@ -36,9 +36,9 @@ def main():
     except Exception as e:
         print(f"❌ Error: {e}")
         print("\n💡 Try running individual experiments:")
-        print("  ./scripts/run_ex1.sh")
-        print("  ./scripts/run_ex2.sh") 
-        print("  ./scripts/run_ex3.sh")
+        print("  ./scripts/run_exp1.sh")
+        print("  ./scripts/run_exp2.sh") 
+        print("  ./scripts/run_exp3.sh")
     finally:
         print("\n✅ Goodbye!")
 

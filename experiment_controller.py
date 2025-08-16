@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Experiment Controller with Graceful Shutdown
-Switches between ex1.py and ex3.py with proper cleanup
+Switches between exp1.py and exp3.py with proper cleanup
 """
 
 import subprocess
@@ -14,6 +14,12 @@ import RPi.GPIO as GPIO
 
 class ExperimentController:
     def __init__(self):
+        experiments = {
+            1: "exp1.py (LED Quantum Hadamard)", 
+            2: "exp2.py (OLED Calculator)",
+            3: "exp3.py (Quantum Toffoli)"
+        }
+        
         self.current_experiment = 1
         self.process = None
         self.script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -185,7 +191,7 @@ try:
     # Clean up GPIO
     GPIO.cleanup()
     
-    # Try to cleanup OLED display (for ex2.py)
+    # Try to cleanup OLED display (for exp2.py)
     try:
         import board
         import busio
@@ -218,9 +224,9 @@ except Exception as e:
     def start_experiment(self, exp_num):
         """Start an experiment with proper monitoring."""
         experiments = {
-            1: ('experiments/ex1.py', 'LED Quantum Hadamard System'),
-            2: ('experiments/ex2.py', 'OLED Calculator with LED Strip'),
-            3: ('experiments/ex3.py', 'Quantum Toffoli Gate')
+            1: ('experiments/exp1.py', 'LED Quantum Hadamard System'),
+            2: ('experiments/exp2.py', 'OLED Calculator with LED Strip'),
+            3: ('experiments/exp3.py', 'Quantum Toffoli Gate')
         }
         
         if exp_num not in experiments:
@@ -294,9 +300,9 @@ except Exception as e:
     def show_status(self):
         """Show current status."""
         exp_names = {
-            1: "ex1.py (LED Quantum Hadamard)", 
-            2: "ex2.py (OLED Calculator)",
-            3: "ex3.py (Quantum Toffoli)"
+            1: "exp1.py (LED Quantum Hadamard)", 
+            2: "exp2.py (OLED Calculator)",
+            3: "exp3.py (Quantum Toffoli)"
         }
         status = "Running" if self.process and self.process.poll() is None else "Stopped"
         
@@ -324,14 +330,14 @@ except Exception as e:
     def show_help(self):
         """Show help information."""
         print("\n📋 Available Experiments:")
-        print("  1️⃣  ex1.py - LED Quantum Hadamard")
+        print("  1️⃣  exp1.py - LED Quantum Hadamard")
         print("      ⚛️ Quantum random system with GPIO 26 button")
         print("      🔴🔵 Alternating colors until button press")
-        print("  2️⃣  ex2.py - OLED Calculator with LED Strip")
+        print("  2️⃣  exp2.py - OLED Calculator with LED Strip")
         print("      🖥️  128x64 OLED display with calculator")
         print("      🎮 GPIO 17 & 27 for numbers, GPIO 26 for calculate")
         print("      🔴🔵 LED animations during calculation")
-        print("  3️⃣  ex3.py - Quantum Toffoli Gate")
+        print("  3️⃣  exp3.py - Quantum Toffoli Gate")
         print("      ⚛️  Quantum AND gate with GPIO 17 & 27 buttons")
         print("      🔴🔵 Shows quantum computation results")
         print("\n🎮 Commands:")
@@ -347,7 +353,7 @@ except Exception as e:
         print("  • GPIO cleanup prevents resource conflicts")
         print("  • Proper signal handling for clean exits")
         print("  • Emergency cleanup as failsafe")
-        print("  • OLED display cleanup for ex2.py")
+        print("  • OLED display cleanup for exp2.py")
         print("  • Hardware toggle button on GPIO 16")
         print("  • Hold button for 5 seconds to exit controller")
         print("\n🔌 Hardware Setup:")

@@ -10,8 +10,8 @@ PINS = {
     'LED_STRIP': 18,
     
     # Buttons
-    'BUTTON_LEFT': 17,      # Left number button (ex2, ex3)
-    'BUTTON_RIGHT': 27,     # Right number button (ex2, ex3)
+    'BUTTON_LEFT': 17,      # Left number button (exp2, exp3)
+    'BUTTON_RIGHT': 27,     # Right number button (exp2, exp3)
     'BUTTON_CALC': 26,      # Calculate/Action button (all experiments)
     'BUTTON_TOGGLE': 16,    # Experiment controller toggle button
     
